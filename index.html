@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Chair Board" />
+<meta name="theme-color" content="#F4F6F4" />
+<link rel="manifest" href="manifest.json" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<title>Chair Board</title>
+<script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
+<style>
+  html, body { margin: 0; padding: 0; background: #E7E9E7; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; }
+  body { font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
+  input[type="checkbox"] { accent-color: #6E5AA3; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  ::-webkit-scrollbar { display: none; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel" data-presets="react">
+const { useState, useEffect, useCallback, useRef } = React;
+
+// ---- tiny inline icon set (no external icon package needed) ----------
+function Icon({ children, size = 16, color = "currentColor", style }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color}
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={style}>
+      {children}
+    </svg>
+  );
+}
+const IconClock = (p) => <Icon {...p}><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></Icon>;
+const IconCheck = (p) => <Icon {...p}><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></Icon>;
+const IconMic = (p) => <Icon {...p}><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></Icon>;
+const IconMicOff = (p) => <Icon {...p}><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></Icon>;
+const IconDoor = (p) => <Icon {...p}><path d="M13 4v16"/><path d="M3 20V6a2 2 0 0 1 2-2h8v18H5a2 2 0 0 1-2-2z"/><path d="M17 12h4"/></Icon>;
+const IconShield = (p) => <Icon {...p}><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></Icon>;
+const IconPlus = (p) => <Icon {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></Icon>;
+const IconX = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></Icon>;
+const IconUp = (p) => <Icon {...p}><polyline points="18 15 12 9 6 15"/></Icon>;
+const IconDown = (p) => <Icon {...p}><polyline points="6 9 12 15 18 9"/></Icon>;
+const IconUser = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></Icon>;
+
+// ---- tokens ----------------------------------------------------------
+const INK = "#16262A";
+const PAPER = "#F4F6F4";
+const CARD = "#FFFFFF";
+const LINE = "#DDE3E0";
+const MUTED = "#5B6B6E";
+const ACCENT = "#2E7D6B";
+const PHONE_W = 430;
+const STORAGE_KEY = "chairboard_patients_v1";
+
+const STAGES = {
+  waiting: { label: "Waiting", color: "#8B93A6", next: "chart-review" },
+  "chart-review": { label: "Chart Review", color: "#4C6FA3", next: "access", gate: "GENERAL" },
+  access: { label: "IV Access / Premed", color: "#4C6FA3", next: "premed-wait" },
+  "premed-wait": { label: "Premed Wait", color: "#C98A2C", next: "pre-infusion-check", timer: true },
+  "pre-infusion-check": { label: "Pre-Infusion Check", color: "#6E5AA3", next: "infusing", gate: "PREINFUSION" },
+  infusing: { label: "Infusing \u00b7 pump-timed", color: "#2E7D6B", next: "observation", countUp: true, vitals: true },
+  observation: { label: "Observation", color: "#8A5FBF", next: "discharge-check", timer: true, vitals: true },
+  "discharge-check": { label: "End-of-Visit Check", color: "#3B7A57", next: "complete", gate: "DISCHARGE" },
+  complete: { label: "Complete", color: "#3B7A57", next: null },
+};
+
+const GENERAL_CHECKLIST = ["Allergies reviewed", "Current labs reviewed (CBC, CMP)", "Orders match treatment plan"];
+const DISCHARGE_CHECKLIST = [
+  "Next appointment scheduled",
+  "IV site documented (removal, condition)",
+  "MAR reviewed \u2014 all administered meds charted",
+  "Final vital signs completed",
+  "Charges captured for medications given",
+];
+
+function buildPreInfusionChecklist(patient) {
+  const items = [];
+  patient.premeds.forEach((m) => items.push(`${m} given`));
+  if (patient.todayMeds.length > 0) items.push(`Medication order confirmed: ${patient.todayMeds.join(" \u2192 ")}`);
+  items.push("Rate and order match chart");
+  return items;
+}
+
+function mmss(min) {
+  const m = Math.max(0, Math.floor(min));
+  const s = Math.max(0, Math.round((min - m) * 60));
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+function locLabel(p) { return `${p.type === "chair" ? "C" : "B"}${p.number}`; }
+function locWord(p) { return p.type === "chair" ? "Chair" : "Bed"; }
+
+function useVoiceInput(onResult) {
+  const [listening, setListening] = useState(false);
+  const [supported, setSupported] = useState(true);
+  const recRef = useRef(null);
+  const start = useCallback(() => {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) { setSupported(false); return; }
+    const rec = new SR();
+    rec.continuous = false;
+    rec.interimResults = false;
+    rec.lang = "en-US";
+    rec.onresult = (e) => onResult(e.results[0][0].transcript);
+    rec.onend = () => setListening(false);
+    rec.onerror = () => setListening(false);
+    recRef.current = rec;
+    try { rec.start(); setListening(true); } catch { setListening(false); }
+  }, [onResult]);
+  const stop = useCallback(() => { recRef.current?.stop(); setListening(false); }, []);
+  return { listening, supported, start, stop };
+}
+
+function FieldLabel({ children }) {
+  return <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 6 }}>{children}</div>;
+}
+
+function Stepper({ value, onChange, step = 5, min = 0 }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <button onClick={() => onChange(Math.max(min, value - step))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>\u2212</button>
+      <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 48, textAlign: "center", color: INK }}>{value}</span>
+      <button onClick={() => onChange(value + step)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
+      <span style={{ fontSize: 12, color: MUTED }}>min</span>
+    </div>
+  );
+}
+
+function OrderedListEditor({ items, onChange, placeholder }) {
+  const [draft, setDraft] = useState("");
+  const add = () => { if (!draft.trim()) return; onChange([...items, draft.trim()]); setDraft(""); };
+  const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
+  const move = (i, dir) => {
+    const next = [...items]; const j = i + dir;
+    if (j < 0 || j >= next.length) return;
+    [next[i], next[j]] = [next[j], next[i]];
+    onChange(next);
+  };
+  return (
+    <div>
+      {items.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
+          {items.map((item, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: PAPER, border: `1px solid ${LINE}` }}>
+              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED }}>{i + 1}</span>
+              <span style={{ flex: 1, fontSize: 14, color: INK }}>{item}</span>
+              <button onClick={() => move(i, -1)} disabled={i === 0} style={{ color: i === 0 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconUp size={16} /></button>
+              <button onClick={() => move(i, 1)} disabled={i === items.length - 1} style={{ color: i === items.length - 1 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconDown size={16} /></button>
+              <button onClick={() => remove(i)} style={{ color: "#B0413E", background: "none", border: "none" }}><IconX size={16} /></button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+          placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
+      </div>
+    </div>
+  );
+}
+
+function NewPatientForm({ existing, onSave, onCancel }) {
+  const [initials, setInitials] = useState("");
+  const [type, setType] = useState("chair");
+  const [number, setNumber] = useState(1);
+  const [regimenLabel, setRegimenLabel] = useState("");
+  const [premeds, setPremeds] = useState([]);
+  const [todayMeds, setTodayMeds] = useState([]);
+  const [vitalsIntervalMin, setVitalsIntervalMin] = useState(30);
+  const [observationMin, setObservationMin] = useState(0);
+  const [premedWaitMin, setPremedWaitMin] = useState(0);
+
+  const usedNumbers = existing.filter((p) => p.type === type).map((p) => p.number);
+  const numberTaken = usedNumbers.includes(number);
+  const canSave = initials.trim().length > 0 && !numberTaken && todayMeds.length > 0;
+
+  const save = () => {
+    if (!canSave) return;
+    onSave({
+      id: Date.now(), type, number, initials: initials.trim().toUpperCase(),
+      regimenLabel: regimenLabel.trim(), premeds, todayMeds, vitalsIntervalMin, observationMin,
+      premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: "waiting", notes: [],
+    });
+  };
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
+      <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 16 }}>New Patient</div>
+      <FieldLabel>Initials</FieldLabel>
+      <input value={initials} onChange={(e) => setInitials(e.target.value)} placeholder="e.g. M.R."
+        style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
+
+      <FieldLabel>Location</FieldLabel>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        {["chair", "bed"].map((t) => (
+          <button key={t} onClick={() => setType(t)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, textTransform: "capitalize",
+            background: type === t ? ACCENT : CARD, color: type === t ? "#FFF" : INK, border: `1px solid ${type === t ? ACCENT : LINE}` }}>{t}</button>
+        ))}
+      </div>
+
+      <FieldLabel>{type === "chair" ? "Chair" : "Bed"} number</FieldLabel>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
+        <button onClick={() => setNumber(Math.max(1, number - 1))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>\u2212</button>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 40, textAlign: "center", color: INK }}>{number}</span>
+        <button onClick={() => setNumber(number + 1)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
+      </div>
+      {numberTaken ? <div style={{ fontSize: 12, marginBottom: 12, color: "#B0413E" }}>{locWord({ type })} {number} is already in use.</div> : <div style={{ marginBottom: 16 }} />}
+
+      <FieldLabel>Regimen / treatment label (optional)</FieldLabel>
+      <input value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} placeholder="e.g. FOLFOX \u00b7 C3D1"
+        style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
+
+      <FieldLabel>Premeds, in order given</FieldLabel>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" /></div>
+
+      <FieldLabel>Today's medications, in order</FieldLabel>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={todayMeds} onChange={setTodayMeds} placeholder="e.g. Rituximab" /></div>
+
+      <FieldLabel>Vitals check interval</FieldLabel>
+      <div style={{ marginBottom: 16 }}><Stepper value={vitalsIntervalMin} onChange={setVitalsIntervalMin} step={5} min={5} /></div>
+
+      {premeds.length > 0 && (<>
+        <FieldLabel>Premed wait time before infusing</FieldLabel>
+        <div style={{ marginBottom: 16 }}><Stepper value={premedWaitMin} onChange={setPremedWaitMin} step={5} min={0} /></div>
+      </>)}
+
+      <FieldLabel>Observation period after infusion</FieldLabel>
+      <div style={{ marginBottom: 24 }}><Stepper value={observationMin} onChange={setObservationMin} step={5} min={0} /></div>
+
+      <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
+        <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, border: `1px solid ${LINE}`, color: MUTED, background: CARD }}>Cancel</button>
+        <button onClick={save} disabled={!canSave} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, background: canSave ? ACCENT : "#C9DAD3", color: "#FFF", border: "none" }}>Add patient</button>
+      </div>
+      {!canSave && <div style={{ fontSize: 12, paddingBottom: 24, color: MUTED }}>Needs initials, an open {type} number, and at least one medication for today.</div>}
+    </div>
+  );
+}
+
+function TabBar({ patients, activeId, onSelect, onAddTab }) {
+  return (
+    <div style={{ display: "flex", overflowX: "auto", background: CARD, borderBottom: `1px solid ${LINE}`, WebkitOverflowScrolling: "touch" }}>
+      {patients.map((p) => {
+        const isActive = p.id === activeId;
+        const cfg = STAGES[p.stage];
+        return (
+          <button key={p.id} onClick={() => onSelect(p.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0,
+            width: 58, height: 56, borderBottom: `3px solid ${isActive ? cfg.color : "transparent"}`, background: "none", border: "none", borderBottomWidth: 3, borderBottomStyle: "solid", borderBottomColor: isActive ? cfg.color : "transparent" }}>
+            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: isActive ? INK : MUTED }}>{locLabel(p)}</span>
+            <span style={{ width: 6, height: 6, borderRadius: 999, background: cfg.color }} />
+          </button>
+        );
+      })}
+      <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 58, height: 56, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
+        <IconPlus size={18} color={activeId === "new" ? ACCENT : MUTED} />
+      </button>
+    </div>
+  );
+}
+
+function ChecklistGate({ items, checked, onToggle }) {
+  return (
+    <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+        <IconShield size={14} color="#6E5AA3" />
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>Confirm before continuing</span>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+        {items.map((item, i) => (
+          <label key={i} style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 15, lineHeight: 1.4, color: INK, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!checked[i]} onChange={() => onToggle(i)} style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0 }} />
+            <span>{item}</span>
+          </label>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function NotesSection({ notes, onAdd }) {
+  const [draft, setDraft] = useState("");
+  const { listening, supported, start, stop } = useVoiceInput(onAdd);
+  const submit = () => { if (!draft.trim()) return; onAdd(draft.trim()); setDraft(""); };
+  return (
+    <div style={{ marginTop: 20 }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 8 }}>Notes</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="Add a note\u2026"
+          style={{ flex: 1, fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <button onClick={submit} style={{ borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, width: 42, height: 42, flexShrink: 0, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
+        <button onClick={listening ? stop : start} style={{ borderRadius: 8, border: `1px solid ${listening ? "#B0413E" : LINE}`, color: listening ? "#B0413E" : MUTED, background: listening ? "#FBEAE9" : CARD, width: 42, height: 42, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          {supported ? <IconMic size={18} /> : <IconMicOff size={18} />}
+        </button>
+      </div>
+      {!supported && <div style={{ fontSize: 11, marginTop: 6, color: MUTED }}>Voice input isn\u2019t supported in this browser \u2014 works in Safari/Chrome with mic permission granted.</div>}
+      {notes.length > 0 && (
+        <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
+          {notes.slice().reverse().map((n, i) => (
+            <div key={i} style={{ fontSize: 13, color: MUTED }}><span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{n.t}</span> \u2014 {n.text}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function BayScreen({ p, checked, onToggleCheck, onAddNote, onClearVitals }) {
+  const cfg = STAGES[p.stage];
+  const isGated = !!cfg.gate;
+  const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
+  const vitalsUrgent = p.vitalsIn !== undefined && p.vitalsIn <= 3;
+
+  return (
+    <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px", borderTop: `4px solid ${cfg.color}` }}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: "0.05em", color: MUTED }}>{locWord(p).toUpperCase()} {p.number}</div>
+          <div style={{ fontSize: 20, fontWeight: 600, marginTop: 2, color: INK }}>{p.initials}</div>
+        </div>
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 10px", borderRadius: 999, color: cfg.color, background: `${cfg.color}1A` }}>{cfg.label}</span>
+      </div>
+
+      {p.regimenLabel && <div style={{ fontSize: 14, marginTop: 4, color: MUTED }}>{p.regimenLabel}</div>}
+
+      {cfg.timer && (
+        <div style={{ marginTop: 24, display: "flex", alignItems: "baseline", gap: 8 }}>
+          <IconClock size={18} color={MUTED} />
+          <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 48, color: INK }}>{mmss(p.remaining)}</span>
+          <span style={{ fontSize: 12, color: MUTED }}>wait remaining</span>
+        </div>
+      )}
+      {cfg.countUp && (
+        <div style={{ marginTop: 24, display: "flex", alignItems: "baseline", gap: 8 }}>
+          <IconClock size={18} color={MUTED} />
+          <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 48, color: INK }}>{mmss(p.elapsed)}</span>
+          <span style={{ fontSize: 12, color: MUTED }}>elapsed</span>
+        </div>
+      )}
+      {cfg.countUp && <div style={{ fontSize: 12, marginTop: 4, color: MUTED }}>Pump manages actual completion \u2014 for your reference only.</div>}
+
+      {cfg.vitals && p.vitalsIn !== undefined && (
+        <button onClick={onClearVitals} style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", borderRadius: 8,
+          background: vitalsUrgent ? "#FBEAE9" : "#EEF1F0", border: `1px solid ${vitalsUrgent ? "#E7B9B6" : LINE}` }}>
+          <IconUser size={16} color={vitalsUrgent ? "#B0413E" : MUTED} />
+          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, color: vitalsUrgent ? "#B0413E" : INK }}>Vitals due in {mmss(p.vitalsIn)} \u00b7 every {p.vitalsIntervalMin} min</span>
+        </button>
+      )}
+
+      {p.stage === "complete" && (
+        <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 8 }}>
+          <IconCheck size={20} color={cfg.color} />
+          <span style={{ fontSize: 15, color: INK }}>Visit complete \u2014 bay ready to reset</span>
+        </div>
+      )}
+
+      {isGated && <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} />}
+      <NotesSection notes={p.notes} onAdd={onAddNote} />
+    </div>
+  );
+}
+
+function BottomBar({ p, checked, onAdvance, onGateContinue }) {
+  if (!p || p.stage === "complete") return null;
+  const cfg = STAGES[p.stage];
+  const isGated = !!cfg.gate;
+  if (isGated) {
+    const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : DISCHARGE_CHECKLIST;
+    const allDone = gateItems.every((_, i) => checked[i]);
+    return (
+      <div style={{ padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
+        <button onClick={onGateContinue} disabled={!allDone} style={{ width: "100%", fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: allDone ? "#6E5AA3" : "#DCD5EA", color: "#FFF", border: "none" }}>
+          {allDone ? "Confirmed \u2014 continue" : "Check all items to continue"}
+        </button>
+      </div>
+    );
+  }
+  if (!cfg.next) return null;
+  return (
+    <div style={{ padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
+      <button onClick={onAdvance} style={{ width: "100%", fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: cfg.color, color: "#FFF", border: "none" }}>
+        Advance to: {STAGES[cfg.next].label}
+      </button>
+    </div>
+  );
+}
+
+function loadPatients() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch (e) {}
+  return [
+    { id: 1, type: "chair", number: 1, initials: "J.A.", regimenLabel: "FOLFOX \u00b7 C3D1", premeds: ["Ondansetron", "Dexamethasone"], todayMeds: ["Oxaliplatin", "Leucovorin", "5-FU bolus"], vitalsIntervalMin: 30, observationMin: 0, premedWaitMin: 20, stage: "waiting", notes: [] },
+  ];
+}
+
+function App() {
+  const [patients, setPatients] = useState(loadPatients);
+  const [activeId, setActiveId] = useState(patients[0]?.id ?? "new");
+  const [checkedMap, setCheckedMap] = useState({});
+
+  useEffect(() => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(patients)); } catch (e) {}
+  }, [patients]);
+
+  useEffect(() => {
+    const t = setInterval(() => {
+      setPatients((prev) => prev.map((p) => {
+        const cfg = STAGES[p.stage];
+        let next = { ...p };
+        if (cfg.timer) next.remaining = Math.max(0, (p.remaining || 0) - 1 / 60);
+        if (cfg.countUp) next.elapsed = (p.elapsed || 0) + 1 / 60;
+        if (cfg.vitals && p.vitalsIn !== undefined) next.vitalsIn = Math.max(0, p.vitalsIn - 1 / 60);
+        return next;
+      }));
+    }, 1000);
+    return () => clearInterval(t);
+  }, []);
+
+  const nowTime = () => { const d = new Date(); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+  const onAdvance = useCallback((id) => {
+    setPatients((prev) => prev.map((p) => {
+      if (p.id !== id) return p;
+      const next = STAGES[p.stage].next;
+      if (!next) return p;
+      const nextCfg = STAGES[next];
+      const updated = { ...p, stage: next };
+      if (nextCfg.timer) updated.remaining = next === "premed-wait" ? p.premedWaitMin : p.observationMin;
+      if (nextCfg.countUp) updated.elapsed = 0;
+      if (nextCfg.vitals && p.vitalsIn === undefined) updated.vitalsIn = p.vitalsIntervalMin;
+      return updated;
+    }));
+  }, []);
+
+  const onGateContinue = useCallback((id) => { setCheckedMap((prev) => ({ ...prev, [id]: {} })); onAdvance(id); }, [onAdvance]);
+  const onToggleCheck = useCallback((id, idx) => { setCheckedMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), [idx]: !(prev[id] || {})[idx] } })); }, []);
+  const onAddNote = useCallback((id, text) => { setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, notes: [...p.notes, { t: nowTime(), text }] } : p))); }, []);
+  const onClearVitals = useCallback((id) => { setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, vitalsIn: p.vitalsIntervalMin } : p))); }, []);
+  const onSaveNewPatient = useCallback((patient) => { setPatients((prev) => [...prev, patient]); setActiveId(patient.id); }, []);
+
+  const activePatient = activeId === "new" ? null : patients.find((p) => p.id === activeId);
+  const activeChecked = activeId === "new" ? {} : checkedMap[activeId] || {};
+
+  return (
+    <div style={{ width: "100%", display: "flex", justifyContent: "center", background: "#E7E9E7", minHeight: "100vh" }}>
+      <div style={{ width: "100%", maxWidth: PHONE_W, minHeight: "100vh", background: PAPER, display: "flex", flexDirection: "column" }}>
+        <TabBar patients={patients} activeId={activeId} onSelect={setActiveId} onAddTab={() => setActiveId("new")} />
+        {activeId === "new" ? (
+          <NewPatientForm existing={patients} onSave={onSaveNewPatient} onCancel={() => setActiveId(patients[0]?.id ?? "new")} />
+        ) : activePatient ? (
+          <>
+            <BayScreen p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, i)} onAddNote={(text) => onAddNote(activeId, text)} onClearVitals={() => onClearVitals(activeId)} />
+            <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onGateContinue={() => onGateContinue(activeId)} />
+          </>
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: MUTED }}>
+            <IconDoor size={32} />
+            <div style={{ fontSize: 14 }}>No patients yet \u2014 tap + to add one</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+const root = ReactDOM.createRoot(document.getElementById("root"));
+root.render(<App />);
+</script>
+</body>
+</html>
