@@ -164,9 +164,15 @@ function Stepper({ value, onChange, step = 5, min = 0 }) {
   );
 }
 
-function OrderedListEditor({ items, onChange, placeholder }) {
+function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange }) {
   const [draft, setDraft] = useState("");
-  const add = () => { if (!draft.trim()) return; onChange([...items, draft.trim()]); setDraft(""); };
+  const inputRef = useRef(null);
+  const add = () => {
+    if (!draft.trim()) return;
+    onChange([...items, draft.trim()]);
+    setDraft("");
+    onPendingChange(false);
+  };
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
     const next = [...items]; const j = i + dir;
@@ -175,7 +181,7 @@ function OrderedListEditor({ items, onChange, placeholder }) {
     onChange(next);
   };
   return (
-    <div>
+    <div data-entry-editor={entryName}>
       {items.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
           {items.map((item, i) => (
@@ -190,10 +196,12 @@ function OrderedListEditor({ items, onChange, placeholder }) {
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
-          placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <input ref={inputRef} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+          onBlur={() => { if (draft.trim()) setTimeout(() => inputRef.current?.focus(), 0); }}
+          placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
+      {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
     </div>
   );
 }
@@ -255,6 +263,8 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [vitalsSelections, setVitalsSelections] = useState(patient?.vitalsSelections || (patient?.vitalsIntervalMin === 15 ? ["15"] : patient?.vitalsIntervalMin === 30 ? ["every30"] : []));
   const [observationMin, setObservationMin] = useState(patient?.observationMin || 0);
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
+  const [labsEntryPending, setLabsEntryPending] = useState(false);
+  const [premedsEntryPending, setPremedsEntryPending] = useState(false);
 
   const usedNumbers = existing.filter((p) => p.type === type && p.id !== patient?.id).map((p) => p.number);
   const numberTaken = usedNumbers.includes(number);
@@ -270,7 +280,13 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   };
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
+    <div onPointerDownCapture={(event) => {
+      const editor = event.target.closest?.("[data-entry-editor]")?.dataset.entryEditor;
+      if ((labsEntryPending && editor !== "labs") || (premedsEntryPending && editor !== "premeds")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    }} style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
       <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 16 }}>{patient ? "Edit Patient" : "New Patient"}</div>
       <FieldLabel>Initials</FieldLabel>
       <input value={initials} onChange={(e) => setInitials(e.target.value)} placeholder="e.g. M.R."
@@ -299,10 +315,10 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
 
       <FieldLabel>Labs (optional)</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" /></div>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} /></div>
 
       <FieldLabel>Premeds, in order given</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" /></div>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} /></div>
 
       <FieldLabel>Today's medications, in order</FieldLabel>
       <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} /></div>
