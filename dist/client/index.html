@@ -94,6 +94,7 @@ function buildPreInfusionChecklist(patient) {
   const items = ["Required Labs Checked"];
   (patient.labs || []).forEach((lab) => items.push(lab));
   (patient.premeds || []).forEach((m) => items.push(`${m} given`));
+  items.push("IV access/Port Access Documented");
   items.push("Name tag");
   items.push("Labeled bags");
   items.push("Rate and order match chart");
