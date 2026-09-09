@@ -348,7 +348,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       <FieldLabel>Premeds, in order given</FieldLabel>
       <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} /></div>
 
-      <FieldLabel>Today's medications, in order</FieldLabel>
+      <FieldLabel>Today's Medications (Infusions &amp; Injections)</FieldLabel>
       <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} /></div>
 
       {premeds.length > 0 && (<>
