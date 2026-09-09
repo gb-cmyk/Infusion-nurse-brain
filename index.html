@@ -160,13 +160,13 @@ function FieldLabel({ children }) {
   return <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 6 }}>{children}</div>;
 }
 
-function Stepper({ value, onChange, step = 5, min = 0 }) {
+function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <button onClick={() => onChange(Math.max(min, value - step))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>-</button>
-      <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 48, textAlign: "center", color: INK }}>{value}</span>
+      <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 48, textAlign: "center", color: highlighted ? "#FFF" : INK }}>{value}</span>
       <button onClick={() => onChange(value + step)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
-      <span style={{ fontSize: 12, color: MUTED }}>min</span>
+      <span style={{ fontSize: 12, color: highlighted ? "#FFF" : MUTED }}>min</span>
     </div>
   );
 }
@@ -354,17 +354,19 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
       {premeds.length > 0 && (<>
         <FieldLabel>Premed wait time before infusing</FieldLabel>
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <Stepper value={premedWaitMin} onChange={setPremedWaitMin} step={5} min={0} />
-          <button onClick={() => setPremedWaitMin(30)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>30 min</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, padding: 10, borderRadius: 10, background: premedWaitMin > 0 ? SELECTED_GREEN : "transparent", border: `1px solid ${premedWaitMin > 0 ? SELECTED_GREEN : LINE}` }}>
+          <Stepper value={premedWaitMin} onChange={setPremedWaitMin} step={5} min={0} highlighted={premedWaitMin > 0} />
+          <button onClick={() => setPremedWaitMin(30)} style={{ padding: "10px 10px", borderRadius: 8, border: `1px solid ${premedWaitMin === 30 ? "#FFF" : ACCENT}`, color: premedWaitMin === 30 ? SELECTED_GREEN : ACCENT, background: CARD, fontSize: 12, fontWeight: 600, whiteSpace: "nowrap" }}>30 min</button>
+          <button onClick={() => setPremedWaitMin(0)} style={{ padding: "10px 9px", borderRadius: 8, border: `1px solid ${premedWaitMin > 0 ? "#FFF" : LINE}`, color: premedWaitMin > 0 ? SELECTED_GREEN : MUTED, background: CARD, fontSize: 12, fontWeight: 600 }}>Clear</button>
         </div>
       </>)}
 
       <FieldLabel>Observation period after infusion</FieldLabel>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
-        <Stepper value={observationMin} onChange={setObservationMin} step={5} min={0} />
-        <button onClick={() => setObservationMin(30)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${observationMin === 30 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 30 ? "#FFF" : ACCENT, background: observationMin === 30 ? SELECTED_GREEN : CARD, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>30 min</button>
-        <button onClick={() => setObservationMin(60)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${observationMin === 60 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 60 ? "#FFF" : ACCENT, background: observationMin === 60 ? SELECTED_GREEN : CARD, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>60 min</button>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24, padding: 10, borderRadius: 10, background: observationMin > 0 ? SELECTED_GREEN : "transparent", border: `1px solid ${observationMin > 0 ? SELECTED_GREEN : LINE}` }}>
+        <Stepper value={observationMin} onChange={setObservationMin} step={5} min={0} highlighted={observationMin > 0} />
+        <button onClick={() => setObservationMin(30)} style={{ padding: "10px 8px", borderRadius: 8, border: `1px solid ${observationMin === 30 ? "#FFF" : ACCENT}`, color: observationMin === 30 ? SELECTED_GREEN : ACCENT, background: CARD, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>30 min</button>
+        <button onClick={() => setObservationMin(60)} style={{ padding: "10px 8px", borderRadius: 8, border: `1px solid ${observationMin === 60 ? "#FFF" : ACCENT}`, color: observationMin === 60 ? SELECTED_GREEN : ACCENT, background: CARD, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>60 min</button>
+        <button onClick={() => setObservationMin(0)} style={{ padding: "10px 7px", borderRadius: 8, border: `1px solid ${observationMin > 0 ? "#FFF" : LINE}`, color: observationMin > 0 ? SELECTED_GREEN : MUTED, background: CARD, fontSize: 11, fontWeight: 600 }}>Clear</button>
       </div>
 
       <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
