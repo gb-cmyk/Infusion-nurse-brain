@@ -80,7 +80,7 @@ const STAGES = {
   complete: { label: "Complete", color: "#3B7A57", previous: "discharge-check", next: null },
 };
 
-const GENERAL_CHECKLIST = ["Allergies reviewed", "Current labs reviewed (CBC, CMP)", "Labs released?", "All Therapy Plans Reviewed", "Consent", null, "Patient assessment"];
+const GENERAL_CHECKLIST = ["Allergies reviewed", "Treatment parameters met?", "Labs released?", "All Therapy Plans Reviewed", "Required consent done (i.e. chemo, blood)?", "Treatment signed & readied by pharmacy?", "Patient assessment"];
 const DISCHARGE_CHECKLIST = [
   "Next appointment scheduled",
   "IV site documented (removal, condition)",
@@ -429,7 +429,7 @@ function TabBar({ patients, activeId, onSelect, onAddTab, onSettings, settingsAc
   );
 }
 
-function ChecklistGate({ items, checked, onToggle }) {
+function ChecklistGate({ items, checked, onToggle, onSelectAll }) {
   return (
     <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
@@ -444,6 +444,11 @@ function ChecklistGate({ items, checked, onToggle }) {
           </label>
         ) : null)}
       </div>
+      {onSelectAll && (
+        <button onClick={() => onSelectAll(true)} style={{ width: "100%", marginTop: 16, padding: "11px 0", borderRadius: 8, border: `1px solid ${SELECTED_GREEN}`, background: items.every((item, index) => !item || checked[index]) ? SELECTED_GREEN : CARD, color: items.every((item, index) => !item || checked[index]) ? "#FFF" : SELECTED_GREEN, fontSize: 14, fontWeight: 600 }}>
+          Select all
+        </button>
+      )}
     </div>
   );
 }
@@ -670,7 +675,7 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
 
       {p.stage === "pre-infusion-check" ? (
         <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onStartPremedTimer={onStartPremedTimer} />
-      ) : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} /> : null}
+      ) : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={p.stage === "chart-review" ? onCheckAll : null} /> : null}
       {p.stage === "chart-review" && (
         <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
           <div style={{ fontSize: 15, fontWeight: 500, color: INK, marginBottom: 10 }}>Port access?</div>
@@ -979,7 +984,7 @@ function App() {
     setCheckedMap((prev) => {
       const patient = patients.find((entry) => entry.id === id);
       if (!patient) return prev;
-      const items = stage === "pre-infusion-check" ? buildPreInfusionChecklist(patient) : [];
+      const items = stage === "pre-infusion-check" ? buildPreInfusionChecklist(patient) : stage === "chart-review" ? GENERAL_CHECKLIST : stage === "discharge-check" ? DISCHARGE_CHECKLIST : [];
       const stageChecks = Object.fromEntries(items.map((_, index) => [index, value]));
       return { ...prev, [id]: { ...(prev[id] || {}), [stage]: stageChecks } };
     });
