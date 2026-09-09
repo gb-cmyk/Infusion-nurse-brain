@@ -85,7 +85,7 @@ const DISCHARGE_CHECKLIST = [
   "Next appointment scheduled",
   "IV site documented (removal, condition)",
   "MAR reviewed \u2014 all administered meds charted",
-  "Final vital signs completed",
+  "All vitals completed",
   "Charges captured for medications given",
   "If #1, are education and systems assessment done?",
   "If Pump, Clamp check done",
@@ -511,7 +511,7 @@ function NotesSection({ notes, onAdd }) {
     <div style={{ marginTop: 20 }}>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 8 }}>Notes</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="Add a note\u2026"
+        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="Add a note..."
           style={{ flex: 1, fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
         <button onClick={submit} style={{ borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, width: 42, height: 42, flexShrink: 0, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
         <button onClick={listening ? stop : start} style={{ borderRadius: 8, border: `1px solid ${listening ? "#B0413E" : LINE}`, color: listening ? "#B0413E" : MUTED, background: listening ? "#FBEAE9" : CARD, width: 42, height: 42, flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -685,7 +685,7 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
 
       {p.stage === "pre-infusion-check" ? (
         <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onStartPremedTimer={onStartPremedTimer} />
-      ) : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={p.stage === "chart-review" ? onCheckAll : null} /> : null}
+      ) : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={p.stage === "chart-review" || p.stage === "discharge-check" ? onCheckAll : null} /> : null}
       {p.stage === "chart-review" && (
         <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
           <div style={{ fontSize: 15, fontWeight: 500, color: INK, marginBottom: 10 }}>Port access?</div>
