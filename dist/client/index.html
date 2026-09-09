@@ -589,6 +589,16 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCom
     <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
       {runs.map((run, index) => {
         const readyToStart = run.orderConfirmed && (!run.filterRequired || run.filterReady);
+        const hasPrescribedDuration = Number(run.durationMin) > 0;
+        const timerValue = run.status === "pending" && hasPrescribedDuration
+          ? Number(run.durationMin)
+          : run.status === "running" && hasPrescribedDuration
+            ? (run.remainingMin ?? Number(run.durationMin))
+            : (run.elapsedSeconds || 0) / 60;
+        const timerLabel = run.status === "complete" ? "completed"
+          : run.status === "pending" && hasPrescribedDuration ? "prescribed"
+          : run.status === "running" && hasPrescribedDuration ? "remaining"
+          : run.status === "running" ? "elapsed" : "ready";
         return (
           <div key={`${run.name}-${index}`} style={{ padding: 16, borderRadius: 12, background: run.status === "complete" ? "#EEF1EF" : CARD, border: `1px solid ${run.status === "running" ? ACCENT : LINE}`, opacity: run.status === "complete" ? 0.68 : 1 }}>
             <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED, textTransform: "uppercase", marginBottom: 4 }}>Medication {index + 1} of {runs.length}{run.status === "running" ? " · Running" : ""}</div>
@@ -606,21 +616,21 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCom
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "not specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 14 }}>
-              <IconClock size={18} color={MUTED} />
-              <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 40, color: INK }}>{mmss((run.elapsedSeconds || 0) / 60)}</span>
-              <span style={{ fontSize: 12, color: MUTED }}>{run.status === "complete" ? "completed" : run.status === "running" ? "elapsed" : "ready"}</span>
+              <IconClock size={16} color={MUTED} />
+              <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, color: run.status === "running" && hasPrescribedDuration && run.remainingMin === 0 ? "#B0413E" : INK }}>{mmss(timerValue)}</span>
+              <span style={{ fontSize: 12, color: MUTED }}>{timerLabel}</span>
             </div>
-            {run.status === "running" && Number(run.durationMin) > 0 && (
+            {run.status === "running" && hasPrescribedDuration && run.remainingMin === 0 && (
               <div style={{ marginTop: 4, fontSize: 13, fontWeight: 600, color: run.remainingMin === 0 ? "#B0413E" : ACCENT }}>
-                {run.remainingMin === 0 ? "Planned duration reached" : `${mmss(run.remainingMin || 0)} planned time remaining`}
+                Planned duration reached
               </div>
             )}
             {run.vitalsTimers?.length > 0 && <VitalsTimers timers={run.vitalsTimers} onComplete={(timerIndex) => onCompleteMedicationVitals(index, timerIndex)} />}
             {run.status === "pending" && (
-              <button onClick={() => onStartMedication(index)} disabled={!readyToStart} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: readyToStart ? ACCENT : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Start timer</button>
+              <button onClick={() => onStartMedication(index)} disabled={!readyToStart} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: readyToStart ? ACCENT : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Start infusion</button>
             )}
             {run.status === "running" && (
-              <button onClick={() => onCompleteMedication(index)} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: "#3B7A57", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Complete medication</button>
+              <button onClick={() => onCompleteMedication(index)} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: "#3B7A57", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Complete Medication</button>
             )}
             {run.status === "complete" && <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Completed at {run.completedAt} · Duration {mmss((run.elapsedSeconds || 0) / 60)}</div>}
           </div>
