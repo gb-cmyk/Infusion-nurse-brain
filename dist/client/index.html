@@ -64,6 +64,7 @@ const CARD = "#FFFFFF";
 const LINE = "#DDE3E0";
 const MUTED = "#5B6B6E";
 const ACCENT = "#2E7D6B";
+const SELECTED_GREEN = "#174D3C";
 const PHONE_W = 430;
 const STORAGE_KEY = "chairboard_patients_v1";
 const CHECKED_STORAGE_KEY = "chairboard_checklists_v1";
@@ -264,7 +265,7 @@ function MedicationListEditor({ items, onChange }) {
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5 }}>
                   {[{ label: "15", value: "15" }, { label: "30", value: "30" }, { label: "End", value: "end" }, { label: "Every 30", value: "every30" }].map((option) => {
                     const selected = (med.vitalsSelections || []).includes(option.value);
-                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? ACCENT : LINE}`, background: selected ? ACCENT : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
+                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? SELECTED_GREEN : LINE}`, background: selected ? SELECTED_GREEN : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
                   })}
                 </div>
               </div>
@@ -362,8 +363,8 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       <FieldLabel>Observation period after infusion</FieldLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 24 }}>
         <Stepper value={observationMin} onChange={setObservationMin} step={5} min={0} />
-        <button onClick={() => setObservationMin(30)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>30 min</button>
-        <button onClick={() => setObservationMin(60)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 13, fontWeight: 500, whiteSpace: "nowrap" }}>60 min</button>
+        <button onClick={() => setObservationMin(30)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${observationMin === 30 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 30 ? "#FFF" : ACCENT, background: observationMin === 30 ? SELECTED_GREEN : CARD, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>30 min</button>
+        <button onClick={() => setObservationMin(60)} style={{ padding: "10px 12px", borderRadius: 8, border: `1px solid ${observationMin === 60 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 60 ? "#FFF" : ACCENT, background: observationMin === 60 ? SELECTED_GREEN : CARD, fontSize: 13, fontWeight: 600, whiteSpace: "nowrap" }}>60 min</button>
       </div>
 
       <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
