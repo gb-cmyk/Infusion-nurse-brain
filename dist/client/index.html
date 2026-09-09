@@ -126,6 +126,11 @@ function buildVitalsTimers(selections, startMs = Date.now()) {
     return { key: "end", label: "Vitals at end", dueAt: null, remaining: null, recurring: false };
   });
 }
+function buildMedicationVitalsTimers(selections, durationMin, startMs = Date.now()) {
+  return buildVitalsTimers(selections, startMs).map((timer) => timer.key === "end" && Number(durationMin) > 0
+    ? { ...timer, dueAt: startMs + Number(durationMin) * 60000, remaining: Number(durationMin) }
+    : timer);
+}
 function locLabel(p) { return `${p.type === "chair" ? "C" : "B"}${p.number}`; }
 function locWord(p) { return p.type === "chair" ? "Chair" : "Bed"; }
 
@@ -211,7 +216,7 @@ function MedicationListEditor({ items, onChange }) {
   const [draft, setDraft] = useState("");
   const add = () => {
     if (!draft.trim()) return;
-    onChange([...items, { name: draft.trim(), filterRequired: false }]);
+    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, vitalsSelections: [] }]);
     setDraft("");
   };
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
@@ -223,6 +228,12 @@ function MedicationListEditor({ items, onChange }) {
     onChange(next);
   };
   const setFilterRequired = (i, checked) => onChange(items.map((med, idx) => idx === i ? { ...med, filterRequired: checked } : med));
+  const setDuration = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, durationMin: Math.max(0, Number(value) || 0) } : med));
+  const toggleVitals = (i, value) => onChange(items.map((med, idx) => {
+    if (idx !== i) return med;
+    const selections = med.vitalsSelections || [];
+    return { ...med, vitalsSelections: selections.includes(value) ? selections.filter((entry) => entry !== value) : [...selections, value] };
+  }));
   return (
     <div>
       {items.length > 0 && (
@@ -240,6 +251,23 @@ function MedicationListEditor({ items, onChange }) {
                 <input type="checkbox" checked={med.filterRequired} onChange={(e) => setFilterRequired(i, e.target.checked)} />
                 Filter required?
               </label>
+              <div style={{ marginTop: 12, marginLeft: 19 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Infusion/injection duration</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <input type="number" min="0" inputMode="numeric" value={med.durationMin || 0} onChange={(e) => setDuration(i, e.target.value)} aria-label={`${med.name} duration in minutes`}
+                    style={{ width: 72, height: 38, padding: "0 8px", borderRadius: 8, border: `1px solid ${LINE}`, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, textAlign: "center", color: INK }} />
+                  <span style={{ fontSize: 12, color: MUTED }}>minutes (0 for no duration)</span>
+                </div>
+              </div>
+              <div style={{ marginTop: 12, marginLeft: 19 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Vitals During?</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5 }}>
+                  {[{ label: "15", value: "15" }, { label: "30", value: "30" }, { label: "End", value: "end" }, { label: "Every 30", value: "every30" }].map((option) => {
+                    const selected = (med.vitalsSelections || []).includes(option.value);
+                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? ACCENT : LINE}`, background: selected ? ACCENT : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
+                  })}
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -260,8 +288,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [regimenLabel, setRegimenLabel] = useState(patient?.regimenLabel || "");
   const [labs, setLabs] = useState(patient?.labs || []);
   const [premeds, setPremeds] = useState(patient?.premeds || []);
-  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false } : med));
-  const [vitalsSelections, setVitalsSelections] = useState(patient?.vitalsSelections || (patient?.vitalsIntervalMin === 15 ? ["15"] : patient?.vitalsIntervalMin === 30 ? ["every30"] : []));
+  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, vitalsSelections: patient?.vitalsSelections || [] } : { ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [] }));
   const [observationMin, setObservationMin] = useState(patient?.observationMin || 0);
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const [labsEntryPending, setLabsEntryPending] = useState(false);
@@ -275,7 +302,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
     if (!canSave) return;
     onSave({
       ...(patient || {}), id: patient?.id || Date.now(), type, number, initials: initials.trim().toUpperCase(),
-      regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, vitalsSelections, vitalsIntervalMin: vitalsSelections.includes("every30") ? 30 : 0, observationMin,
+      regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, observationMin,
       premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
     });
   };
@@ -323,17 +350,6 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
       <FieldLabel>Today's medications, in order</FieldLabel>
       <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} /></div>
-
-      <FieldLabel>Vitals During?</FieldLabel>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        {[{ label: "15", value: "15" }, { label: "30", value: "30" }, { label: "End", value: "end" }, { label: "Every 30", value: "every30" }].map((option) => {
-          const selected = vitalsSelections.includes(option.value);
-          return (
-            <button key={option.label} onClick={() => setVitalsSelections((current) => selected ? current.filter((value) => value !== option.value) : [...current, option.value])} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500,
-              background: selected ? ACCENT : CARD, color: selected ? "#FFF" : INK, border: `1px solid ${selected ? ACCENT : LINE}` }}>{option.label}</button>
-          );
-        })}
-      </div>
 
       {premeds.length > 0 && (<>
         <FieldLabel>Premed wait time before infusing</FieldLabel>
@@ -558,9 +574,9 @@ function CustomCountdown({ timer, onStart, onClear }) {
   );
 }
 
-function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onNextMedication }) {
+function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-  const runs = p.medicationRuns || medications.map((med) => ({ name: med.name, filterRequired: med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+  const runs = p.medicationRuns || medications.map((med) => ({ ...med, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
   return (
     <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
       {runs.map((run, index) => {
@@ -579,11 +595,19 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCom
                 Filter ready: {run.name}
               </label>
             )}
+            <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "not specified"}</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 14 }}>
               <IconClock size={18} color={MUTED} />
               <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 40, color: INK }}>{mmss((run.elapsedSeconds || 0) / 60)}</span>
               <span style={{ fontSize: 12, color: MUTED }}>{run.status === "complete" ? "completed" : run.status === "running" ? "elapsed" : "ready"}</span>
             </div>
+            {run.status === "running" && Number(run.durationMin) > 0 && (
+              <div style={{ marginTop: 4, fontSize: 13, fontWeight: 600, color: run.remainingMin === 0 ? "#B0413E" : ACCENT }}>
+                {run.remainingMin === 0 ? "Planned duration reached" : `${mmss(run.remainingMin || 0)} planned time remaining`}
+              </div>
+            )}
+            {run.vitalsTimers?.length > 0 && <VitalsTimers timers={run.vitalsTimers} onComplete={(timerIndex) => onCompleteMedicationVitals(index, timerIndex)} />}
             {run.status === "pending" && (
               <button onClick={() => onStartMedication(index)} disabled={!readyToStart} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: readyToStart ? ACCENT : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Start timer</button>
             )}
@@ -598,7 +622,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCom
   );
 }
 
-function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onCompleteVitals, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onNextMedication }) {
+function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const cfg = STAGES[p.stage];
   const isGated = !!cfg.gate;
   const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
@@ -615,9 +639,8 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
 
       {p.regimenLabel && <div style={{ fontSize: 14, marginTop: 4, color: MUTED }}>{p.regimenLabel}</div>}
 
-      {p.stage === "infusing" && <VitalsTimers timers={p.vitalsTimers} onComplete={onCompleteVitals} />}
       {p.stage === "infusing" && <CustomCountdown key={p.id} timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
-      {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onCompleteMedication={onCompleteMedication} onNextMedication={onNextMedication} />}
+      {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onCompleteMedication={onCompleteMedication} onCompleteMedicationVitals={onCompleteMedicationVitals} />}
 
       {cfg.timer && (
         <div style={{ marginTop: 24, display: "flex", alignItems: "baseline", gap: 8 }}>
@@ -726,10 +749,32 @@ function loadPatients() {
       }
       if (patient.stage === "infusing" && !patient.medicationRuns) {
         const medications = (patient.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        patient.medicationRuns = medications.map((med) => ({ name: med.name, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
         patient.currentMedicationIndex = 0;
       }
-      if (patient.medicationRuns) patient.medicationRuns = patient.medicationRuns.map((run) => run.status === "running" && !run.startedAtMs ? { ...run, startedAtMs: Date.now() - (run.elapsedSeconds || 0) * 1000 } : run);
+      if (patient.medicationRuns) patient.medicationRuns = patient.medicationRuns.map((run, index) => {
+        const medication = typeof patient.todayMeds?.[index] === "string" ? {} : patient.todayMeds?.[index] || {};
+        let updated = { ...medication, ...run, durationMin: run.durationMin ?? medication.durationMin ?? 0, vitalsSelections: run.vitalsSelections || medication.vitalsSelections || [] };
+        if (updated.status === "running" && !updated.startedAtMs) updated.startedAtMs = Date.now() - (updated.elapsedSeconds || 0) * 1000;
+        if (updated.status === "running" && Number(updated.durationMin) > 0) {
+          updated.expectedEndsAt = updated.expectedEndsAt || updated.startedAtMs + Number(updated.durationMin) * 60000;
+          updated.remainingMin = Math.max(0, (updated.expectedEndsAt - Date.now()) / 60000);
+          if (updated.remainingMin === 0 && !updated.durationAlerted) {
+            updated.durationAlerted = true;
+            patient.timerAlert = true;
+          }
+        }
+        if (updated.vitalsTimers) updated.vitalsTimers = updated.vitalsTimers.map((timer) => {
+          if (!timer.dueAt || timer.completedAt) return timer;
+          const remaining = Math.max(0, (timer.dueAt - Date.now()) / 60000);
+          if (remaining === 0 && !timer.alerted) {
+            patient.timerAlert = true;
+            return { ...timer, remaining, alerted: true };
+          }
+          return { ...timer, remaining };
+        });
+        return updated;
+      });
       return patient;
     });
   } catch (e) {}
@@ -827,7 +872,30 @@ function App() {
           }
         }
         if (p.stage === "infusing" && p.medicationRuns?.length) {
-          next.medicationRuns = p.medicationRuns.map((run) => run.status === "running" ? { ...run, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : (run.elapsedSeconds || 0) + 1 } : run);
+          let medicationAlertTriggered = false;
+          next.medicationRuns = p.medicationRuns.map((run) => {
+            if (run.status !== "running") return run;
+            const updated = { ...run, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : (run.elapsedSeconds || 0) + 1 };
+            if (run.expectedEndsAt) {
+              const previousRemaining = run.remainingMin || 0;
+              updated.remainingMin = Math.max(0, (run.expectedEndsAt - Date.now()) / 60000);
+              if (previousRemaining > 0 && updated.remainingMin === 0 && !run.durationAlerted) {
+                updated.durationAlerted = true;
+                medicationAlertTriggered = true;
+              }
+            }
+            if (run.vitalsTimers) updated.vitalsTimers = run.vitalsTimers.map((timer) => {
+              if (!timer.dueAt || timer.completedAt) return timer;
+              const remaining = Math.max(0, (timer.dueAt - Date.now()) / 60000);
+              if (remaining === 0 && !timer.alerted) {
+                medicationAlertTriggered = true;
+                return { ...timer, remaining, alerted: true };
+              }
+              return { ...timer, remaining };
+            });
+            return updated;
+          });
+          if (medicationAlertTriggered) next.timerAlert = true;
         }
         if (p.stage === "infusing" && p.vitalsTimers) {
           let vitalsAlertTriggered = false;
@@ -878,15 +946,10 @@ function App() {
       if (next === "premed-wait") updated.premedAlert = false;
       if (next === "infusing") {
         const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name);
+        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []));
         if (!runsMatch) {
-          updated.medicationRuns = medications.map((med) => ({ name: med.name, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
           updated.currentMedicationIndex = 0;
-        }
-        const vitalsSignature = JSON.stringify(p.vitalsSelections || []);
-        if (!p.vitalsTimers || p.vitalsTimersSignature !== vitalsSignature) {
-          updated.vitalsTimers = buildVitalsTimers(p.vitalsSelections || []);
-          updated.vitalsTimersSignature = vitalsSignature;
         }
       }
       return updated;
@@ -957,9 +1020,25 @@ function App() {
       if (p.id !== id) return p;
       return { ...p, medicationRuns: p.medicationRuns.map((run, i) => {
         if (i !== index || run.status !== "pending" || !run.orderConfirmed || (run.filterRequired && !run.filterReady)) return run;
-        return { ...run, status: "running", startedAt: nowTime(), startedAtMs: Date.now(), elapsedSeconds: 0 };
+        const startedAtMs = Date.now();
+        const durationMin = Number(run.durationMin) || 0;
+        return { ...run, status: "running", startedAt: nowTime(), startedAtMs, elapsedSeconds: 0,
+          expectedEndsAt: durationMin > 0 ? startedAtMs + durationMin * 60000 : null,
+          remainingMin: durationMin > 0 ? durationMin : null,
+          durationAlerted: false,
+          vitalsTimers: buildMedicationVitalsTimers(run.vitalsSelections || [], durationMin, startedAtMs) };
       }) };
     }));
+  }, []);
+  const onCompleteMedicationVitals = useCallback((id, medicationIndex, timerIndex) => {
+    setPatients((prev) => prev.map((p) => p.id === id ? { ...p, medicationRuns: p.medicationRuns.map((run, runIndex) => {
+      if (runIndex !== medicationIndex) return run;
+      return { ...run, vitalsTimers: (run.vitalsTimers || []).map((timer, index) => {
+        if (index !== timerIndex) return timer;
+        if (timer.recurring) return { ...timer, dueAt: Date.now() + 30 * 60000, remaining: 30, alerted: false };
+        return { ...timer, completedAt: nowTime(), completedAtMs: Date.now(), remaining: 0 };
+      }) };
+    }) } : p));
   }, []);
   const onCompleteMedication = useCallback((id, index) => {
     setPatients((prev) => prev.map((p) => p.id === id ? { ...p, medicationRuns: p.medicationRuns.map((run, i) => i === index && run.status === "running" ? { ...run, status: "complete", completedAt: nowTime(), completedAtMs: Date.now(), elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0 } : run) } : p));
@@ -1014,8 +1093,8 @@ function App() {
           <NewPatientForm key={editingPatient?.id || "new"} existing={patients} patient={editingPatient} onSave={onSavePatient} onCancel={() => { setActiveId(editingPatient?.id ?? patients[0]?.id ?? "new"); setEditingId(null); }} />
         ) : activePatient ? (
           <>
-            <BayScreen p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onDelete={() => onDeletePatient(activeId)} onCompleteVitals={(index) => onCompleteVitals(activeId, index)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
-              onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onNextMedication={(index) => onNextMedication(activeId, index)} />
+            <BayScreen p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onDelete={() => onDeletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
+              onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onCompleteMedicationVitals={(medicationIndex, timerIndex) => onCompleteMedicationVitals(activeId, medicationIndex, timerIndex)} />
             <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onRetreat={() => onRetreat(activeId)} onBackToNew={() => { setEditingId(activeId); setActiveId("new"); }} onGateContinue={() => onGateContinue(activeId)} />
           </>
         ) : (
