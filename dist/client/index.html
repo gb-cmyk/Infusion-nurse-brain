@@ -142,14 +142,16 @@ function activeCountdowns(patient) {
     if (remaining !== null && remaining !== undefined && remaining > 0) timers.push({ label, remaining });
   };
   if (STAGES[patient.stage]?.timer && patient.timerEndsAt) add(patient.stage === "premed-wait" ? "PRE" : "OBS", patient.remaining);
-  else if (patient.premedTimerStarted && patient.timerEndsAt) add("PRE", patient.remaining);
-  (patient.medicationRuns || []).forEach((run, medicationIndex) => {
-    if (run.status === "running" && run.expectedEndsAt) add(`M${medicationIndex + 1}`, run.remainingMin);
-    (run.vitalsTimers || []).forEach((timer) => {
-      if (!timer.completedAt && timer.dueAt) add(`V${medicationIndex + 1}`, timer.remaining);
+  else if (patient.stage === "pre-infusion-check" && patient.premedTimerStarted && patient.timerEndsAt) add("PRE", patient.remaining);
+  if (patient.stage === "infusing") {
+    (patient.medicationRuns || []).forEach((run, medicationIndex) => {
+      if (run.status === "running" && run.expectedEndsAt) add(`M${medicationIndex + 1}`, run.remainingMin);
+      (run.vitalsTimers || []).forEach((timer) => {
+        if (!timer.completedAt && timer.dueAt) add(`V${medicationIndex + 1}`, timer.remaining);
+      });
     });
-  });
-  if (patient.customCountdown?.status === "running") add("ALT", patient.customCountdown.remaining);
+    if (patient.customCountdown?.status === "running") add("ALT", patient.customCountdown.remaining);
+  }
   return timers.sort((a, b) => a.remaining - b.remaining);
 }
 
@@ -1042,6 +1044,32 @@ function App() {
       if (!next) return p;
       const nextCfg = STAGES[next];
       const updated = { ...p, stage: next };
+      if (p.stage === "premed-wait") {
+        updated.timerEndsAt = null;
+        updated.remaining = 0;
+        updated.premedTimerStarted = false;
+        updated.stageTimerAlerted = true;
+        updated.timerAlert = false;
+        updated.premedAlert = false;
+      }
+      if (p.stage === "infusing") {
+        updated.medicationRuns = (p.medicationRuns || []).map((run) => ({
+          ...run,
+          status: run.status === "running" ? "stopped" : run.status,
+          expectedEndsAt: null,
+          durationAlerted: true,
+          vitalsTimers: (run.vitalsTimers || []).map((timer) => ({ ...timer, dueAt: null, alerted: false })),
+        }));
+        updated.vitalsTimers = (p.vitalsTimers || []).map((timer) => ({ ...timer, dueAt: null, alerted: false }));
+        updated.customCountdown = p.customCountdown ? { ...p.customCountdown, status: "stopped", endsAt: null, alerted: false } : null;
+        updated.timerAlert = false;
+      }
+      if (p.stage === "observation") {
+        updated.timerEndsAt = null;
+        updated.remaining = 0;
+        updated.stageTimerAlerted = true;
+        updated.timerAlert = false;
+      }
       if (nextCfg.timer) {
         if (next === "premed-wait" && p.premedTimerStarted && p.timerEndsAt) {
           updated.remaining = Math.max(0, (p.timerEndsAt - Date.now()) / 60000);
