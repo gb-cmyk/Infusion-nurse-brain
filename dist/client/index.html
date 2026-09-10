@@ -404,7 +404,7 @@ function SettingsScreen({ settings, onChange, onClose }) {
 
 function TabBar({ patients, activeId, onSelect, onAddTab, onSettings, settingsActive }) {
   return (
-    <div style={{ display: "flex", overflowX: "auto", background: CARD, borderBottom: `1px solid ${LINE}`, WebkitOverflowScrolling: "touch" }}>
+    <div style={{ position: "sticky", top: 0, zIndex: 50, flexShrink: 0, display: "flex", overflowX: "auto", background: CARD, borderBottom: `1px solid ${LINE}`, boxShadow: "0 2px 8px rgba(22, 38, 42, 0.08)", WebkitOverflowScrolling: "touch" }}>
       {patients.map((p) => {
         const isActive = p.id === activeId;
         const cfg = STAGES[p.stage];
