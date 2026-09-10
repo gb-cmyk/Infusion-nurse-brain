@@ -134,6 +134,22 @@ function buildMedicationVitalsTimers(selections, durationMin, startMs = Date.now
 }
 function locLabel(p) { return `${p.type === "chair" ? "C" : "B"}${p.number}`; }
 function locWord(p) { return p.type === "chair" ? "Chair" : "Bed"; }
+function activeCountdowns(patient) {
+  const timers = [];
+  const add = (label, remaining) => {
+    if (remaining !== null && remaining !== undefined && remaining > 0) timers.push({ label, remaining });
+  };
+  if (STAGES[patient.stage]?.timer && patient.timerEndsAt) add(patient.stage === "premed-wait" ? "PRE" : "OBS", patient.remaining);
+  else if (patient.premedTimerStarted && patient.timerEndsAt) add("PRE", patient.remaining);
+  (patient.medicationRuns || []).forEach((run, medicationIndex) => {
+    if (run.status === "running" && run.expectedEndsAt) add(`M${medicationIndex + 1}`, run.remainingMin);
+    (run.vitalsTimers || []).forEach((timer) => {
+      if (!timer.completedAt && timer.dueAt) add(`V${medicationIndex + 1}`, timer.remaining);
+    });
+  });
+  if (patient.customCountdown?.status === "running") add("ALT", patient.customCountdown.remaining);
+  return timers.sort((a, b) => a.remaining - b.remaining);
+}
 
 function useVoiceInput(onResult) {
   const [listening, setListening] = useState(false);
@@ -409,20 +425,25 @@ function TabBar({ patients, activeId, onSelect, onAddTab, onSettings, settingsAc
         const isActive = p.id === activeId;
         const cfg = STAGES[p.stage];
         const needsAttention = !!p.timerAlert || !!p.premedAlert;
+        const countdowns = activeCountdowns(p);
         return (
           <button key={p.id} onClick={() => onSelect(p.id)} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, flexShrink: 0,
-            width: 66, height: 66, borderBottom: `3px solid ${isActive ? cfg.color : "transparent"}`, background: needsAttention ? "#FFF2CC" : "none", border: "none", borderBottomWidth: 3, borderBottomStyle: "solid", borderBottomColor: isActive ? cfg.color : "transparent",
+            width: 78, height: 84, borderBottom: `3px solid ${isActive ? cfg.color : "transparent"}`, background: needsAttention ? "#FFF2CC" : "none", border: "none", borderBottomWidth: 3, borderBottomStyle: "solid", borderBottomColor: isActive ? cfg.color : "transparent",
             animation: needsAttention ? "premed-alert-pulse 1s ease-in-out infinite" : "none" }}>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 13, fontWeight: 600, color: isActive ? INK : MUTED }}>{locLabel(p)}</span>
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: isActive ? INK : MUTED }}>{p.initials}</span>
+            <span style={{ minHeight: 20, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", lineHeight: 1.05 }}>
+              {countdowns.slice(0, 2).map((timer, index) => <span key={`${timer.label}-${index}`} className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 9, fontWeight: 600, color: needsAttention ? "#9A5B00" : SELECTED_GREEN }}>{timer.label} {mmss(timer.remaining)}</span>)}
+              {countdowns.length > 2 && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 8, color: MUTED }}>+{countdowns.length - 2} more</span>}
+            </span>
             <span style={{ width: 6, height: 6, borderRadius: 999, background: cfg.color }} />
           </button>
         );
       })}
-      <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 66, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
+      <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 84, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
         <IconPlus size={18} color={activeId === "new" ? ACCENT : MUTED} />
       </button>
-      <button onClick={onSettings} aria-label="Optional settings" style={{ marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 56, height: 66, background: settingsActive ? "#EEF1F0" : "none", border: "none" }}>
+      <button onClick={onSettings} aria-label="Optional settings" style={{ marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 56, height: 84, background: settingsActive ? "#EEF1F0" : "none", border: "none" }}>
         <IconGear size={20} color={settingsActive ? ACCENT : MUTED} />
       </button>
     </div>
