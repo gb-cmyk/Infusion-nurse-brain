@@ -55,6 +55,7 @@ const IconX = (p) => <Icon {...p}><line x1="18" y1="6" x2="6" y2="18"/><line x1=
 const IconUp = (p) => <Icon {...p}><polyline points="18 15 12 9 6 15"/></Icon>;
 const IconDown = (p) => <Icon {...p}><polyline points="6 9 12 15 18 9"/></Icon>;
 const IconUser = (p) => <Icon {...p}><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="17 11 19 13 23 9"/></Icon>;
+const IconNotebook = (p) => <Icon {...p}><path d="M4 3h14a2 2 0 0 1 2 2v16H6a2 2 0 0 1-2-2V3z"/><path d="M8 3v18"/><path d="M11 8h6"/><path d="M11 12h6"/></Icon>;
 const IconGear = (p) => <Icon {...p}><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09a1.7 1.7 0 0 0 1 1.51 1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.15.38.36.72.6 1 .3.34.7.53 1.1.6H21v4h-.09c-.4.07-.8.26-1.1.6-.24.28-.45.62-.6 1z"/></Icon>;
 
 // ---- tokens ----------------------------------------------------------
@@ -69,6 +70,7 @@ const PHONE_W = 430;
 const STORAGE_KEY = "chairboard_patients_v1";
 const CHECKED_STORAGE_KEY = "chairboard_checklists_v1";
 const SETTINGS_STORAGE_KEY = "chairboard_alert_settings_v1";
+const COMPLETED_STORAGE_KEY = "chairboard_completed_patients_v1";
 
 const STAGES = {
   "chart-review": { label: "Chart Review", color: "#4C6FA3", previous: null, next: "pre-infusion-check", gate: "GENERAL" },
@@ -418,10 +420,49 @@ function SettingsScreen({ settings, onChange, onClose }) {
   );
 }
 
-function TabBar({ patients, activeId, onSelect, onAddTab, onSettings, settingsActive }) {
+function CompletedLibrary({ patients, onDelete, onClose }) {
   return (
-    <div style={{ position: "sticky", top: 0, zIndex: 50, flexShrink: 0, display: "flex", overflowX: "auto", background: CARD, borderBottom: `1px solid ${LINE}`, boxShadow: "0 2px 8px rgba(22, 38, 42, 0.08)", WebkitOverflowScrolling: "touch" }}>
-      {patients.map((p) => {
+    <div style={{ flex: 1, overflowY: "auto", padding: 20, background: PAPER }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 600, color: INK }}>Completed Library</div>
+          <div style={{ marginTop: 3, fontSize: 12, color: MUTED }}>{patients.length} completed patient{patients.length === 1 ? "" : "s"}</div>
+        </div>
+        <button onClick={onClose} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14 }}>Done</button>
+      </div>
+      {patients.length === 0 ? (
+        <div style={{ padding: 24, textAlign: "center", borderRadius: 10, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14 }}>No completed patients yet.</div>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          {patients.slice().reverse().map((patient) => (
+            <div key={patient.id} style={{ padding: 16, borderRadius: 10, border: `1px solid ${LINE}`, background: CARD }}>
+              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{locWord(patient)} {patient.number} · {patient.initials}</div>
+                  <div style={{ marginTop: 3, fontSize: 12, color: MUTED }}>Completed {patient.completedVisitAt ? new Date(patient.completedVisitAt).toLocaleString() : ""}</div>
+                </div>
+                <button onClick={() => onDelete(patient.id)} style={{ alignSelf: "flex-start", padding: "7px 10px", borderRadius: 7, border: "1px solid #E7B9B6", background: CARD, color: "#B0413E", fontSize: 12 }}>Delete</button>
+              </div>
+              {patient.regimenLabel && <div style={{ marginTop: 10, fontSize: 13, color: INK }}>{patient.regimenLabel}</div>}
+              <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.5, color: MUTED }}>
+                <div>Medications: {(patient.todayMeds || []).map((med) => typeof med === "string" ? med : med.name).join(", ") || "None"}</div>
+                <div>Labs: {(patient.labs || []).join(", ") || "None"}</div>
+                <div>Premeds: {(patient.premeds || []).join(", ") || "None"}</div>
+                <div>Notes: {(patient.notes || []).length}</div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function TabBar({ patients, activeId, onSelect, onAddTab, onLibrary, onSettings, libraryActive, settingsActive }) {
+  return (
+    <div style={{ position: "sticky", top: 0, zIndex: 50, flexShrink: 0, display: "flex", overflow: "hidden", background: CARD, borderBottom: `1px solid ${LINE}`, boxShadow: "0 2px 8px rgba(22, 38, 42, 0.08)" }}>
+      <div style={{ flex: 1, minWidth: 0, display: "flex", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        {patients.map((p) => {
         const isActive = p.id === activeId;
         const cfg = STAGES[p.stage];
         const needsAttention = !!p.timerAlert || !!p.premedAlert;
@@ -439,13 +480,19 @@ function TabBar({ patients, activeId, onSelect, onAddTab, onSettings, settingsAc
             <span style={{ width: 6, height: 6, borderRadius: 999, background: cfg.color }} />
           </button>
         );
-      })}
-      <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 84, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
-        <IconPlus size={18} color={activeId === "new" ? ACCENT : MUTED} />
-      </button>
-      <button onClick={onSettings} aria-label="Optional settings" style={{ marginLeft: "auto", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, width: 56, height: 84, background: settingsActive ? "#EEF1F0" : "none", border: "none" }}>
-        <IconGear size={20} color={settingsActive ? ACCENT : MUTED} />
-      </button>
+        })}
+        <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 84, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
+          <IconPlus size={18} color={activeId === "new" ? ACCENT : MUTED} />
+        </button>
+      </div>
+      <div style={{ display: "flex", flexShrink: 0, background: CARD, borderLeft: `1px solid ${LINE}` }}>
+        <button onClick={onLibrary} aria-label="Completed patient library" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 84, background: libraryActive ? "#EEF1F0" : "none", border: "none" }}>
+          <IconNotebook size={20} color={libraryActive ? ACCENT : MUTED} />
+        </button>
+        <button onClick={onSettings} aria-label="Optional settings" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 84, background: settingsActive ? "#EEF1F0" : "none", border: "none" }}>
+          <IconGear size={20} color={settingsActive ? ACCENT : MUTED} />
+        </button>
+      </div>
     </div>
   );
 }
@@ -661,7 +708,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onCom
   );
 }
 
-function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onCompleteMedicationVitals }) {
+function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const cfg = STAGES[p.stage];
   const isGated = !!cfg.gate;
   const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
@@ -698,9 +745,12 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
       {cfg.countUp && <div style={{ fontSize: 12, marginTop: 4, color: MUTED }}>Pump manages actual completion \u2014 for your reference only.</div>}
 
       {p.stage === "complete" && (
-        <div style={{ marginTop: 24, display: "flex", alignItems: "center", gap: 8 }}>
-          <IconCheck size={20} color={cfg.color} />
-          <span style={{ fontSize: 15, color: INK }}>Visit complete \u2014 bay ready to reset</span>
+        <div style={{ marginTop: 24, padding: 18, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <IconCheck size={20} color={cfg.color} />
+            <span style={{ fontSize: 15, color: INK }}>Visit complete. Save this patient to free the chair.</span>
+          </div>
+          <button onClick={onCompletePatient} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: SELECTED_GREEN, color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
         </div>
       )}
 
@@ -719,9 +769,11 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
         </div>
       )}
       <NotesSection notes={p.notes} onAdd={onAddNote} />
-      <button onClick={onDelete} style={{ marginTop: 24, width: "100%", padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, color: "#B0413E", background: CARD, border: "1px solid #E7B9B6" }}>
-        Delete patient
-      </button>
+      {p.stage !== "complete" && (
+        <button onClick={onDelete} style={{ marginTop: 24, width: "100%", padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, color: "#B0413E", background: CARD, border: "1px solid #E7B9B6" }}>
+          Delete patient
+        </button>
+      )}
     </div>
   );
 }
@@ -840,13 +892,24 @@ function loadAlertSettings() {
   }
 }
 
+function loadCompletedPatients() {
+  try {
+    const raw = localStorage.getItem(COMPLETED_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch (e) {
+    return [];
+  }
+}
+
 function App() {
   const [patients, setPatients] = useState(loadPatients);
+  const [completedPatients, setCompletedPatients] = useState(loadCompletedPatients);
   const [activeId, setActiveId] = useState(patients[0]?.id ?? "new");
   const [editingId, setEditingId] = useState(null);
   const [checkedMap, setCheckedMap] = useState(loadCheckedMap);
   const [settings, setSettings] = useState(loadAlertSettings);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLibrary, setShowLibrary] = useState(false);
   const vibratedAlertsRef = useRef(new Set());
   const audioContextRef = useRef(null);
 
@@ -887,6 +950,10 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings)); } catch (e) {}
   }, [settings]);
+
+  useEffect(() => {
+    try { localStorage.setItem(COMPLETED_STORAGE_KEY, JSON.stringify(completedPatients)); } catch (e) {}
+  }, [completedPatients]);
 
   useEffect(() => {
     patients.forEach((patient) => {
@@ -1106,11 +1173,56 @@ function App() {
     setActiveId(remaining[0]?.id ?? "new");
   }, [patients]);
 
+  const onCompletePatient = useCallback((id) => {
+    const patient = patients.find((entry) => entry.id === id);
+    if (!patient) return;
+    const stopVitals = (timers) => (timers || []).map((timer) => ({ ...timer, dueAt: null, alerted: false }));
+    const archived = {
+      ...patient,
+      stage: "complete",
+      completedVisitAt: new Date().toISOString(),
+      timerEndsAt: null,
+      remaining: 0,
+      timerAlert: false,
+      premedAlert: false,
+      premedTimerStarted: false,
+      stageTimerAlerted: true,
+      customCountdown: patient.customCountdown ? { ...patient.customCountdown, status: "stopped", endsAt: null, alerted: false } : null,
+      vitalsTimers: stopVitals(patient.vitalsTimers),
+      medicationRuns: (patient.medicationRuns || []).map((run) => ({
+        ...run,
+        status: run.status === "running" ? "stopped" : run.status,
+        expectedEndsAt: null,
+        remainingMin: 0,
+        durationAlerted: true,
+        vitalsTimers: stopVitals(run.vitalsTimers),
+      })),
+      checklistHistory: checkedMap[id] || {},
+    };
+    setCompletedPatients((current) => [...current.filter((entry) => entry.id !== id), archived]);
+    const remainingPatients = patients.filter((entry) => entry.id !== id);
+    setPatients(remainingPatients);
+    setCheckedMap((current) => {
+      const next = { ...current };
+      delete next[id];
+      return next;
+    });
+    vibratedAlertsRef.current.delete(id);
+    setActiveId(remainingPatients[0]?.id ?? "new");
+  }, [patients, checkedMap]);
+
+  const onDeleteCompletedPatient = useCallback((id) => {
+    const patient = completedPatients.find((entry) => entry.id === id);
+    if (!patient || !window.confirm(`Permanently delete ${patient.initials} from the Completed Library?`)) return;
+    setCompletedPatients((current) => current.filter((entry) => entry.id !== id));
+  }, [completedPatients]);
+
   const onSelectPatient = useCallback((id) => {
     setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, premedAlert: false, timerAlert: false } : patient));
     vibratedAlertsRef.current.delete(id);
     setEditingId(null);
     setShowSettings(false);
+    setShowLibrary(false);
     setActiveId(id);
   }, []);
 
@@ -1125,14 +1237,16 @@ function App() {
   return (
     <div onPointerDown={primeAudio} style={{ width: "100%", display: "flex", justifyContent: "center", background: "#E7E9E7", minHeight: "100vh" }}>
       <div style={{ width: "100%", maxWidth: PHONE_W, minHeight: "100vh", background: PAPER, display: "flex", flexDirection: "column" }}>
-        <TabBar patients={patients} activeId={activeId} onSelect={onSelectPatient} onAddTab={() => { setEditingId(null); setShowSettings(false); setActiveId("new"); }} onSettings={() => setShowSettings(true)} settingsActive={showSettings} />
-        {showSettings ? (
+        <TabBar patients={patients} activeId={activeId} onSelect={onSelectPatient} onAddTab={() => { setEditingId(null); setShowSettings(false); setShowLibrary(false); setActiveId("new"); }} onLibrary={() => { setShowLibrary(true); setShowSettings(false); }} onSettings={() => { setShowSettings(true); setShowLibrary(false); }} libraryActive={showLibrary} settingsActive={showSettings} />
+        {showLibrary ? (
+          <CompletedLibrary patients={completedPatients} onDelete={onDeleteCompletedPatient} onClose={() => setShowLibrary(false)} />
+        ) : showSettings ? (
           <SettingsScreen settings={settings} onChange={onChangeSetting} onClose={() => setShowSettings(false)} />
         ) : activeId === "new" ? (
           <NewPatientForm key={editingPatient?.id || "new"} existing={patients} patient={editingPatient} onSave={onSavePatient} onCancel={() => { setActiveId(editingPatient?.id ?? patients[0]?.id ?? "new"); setEditingId(null); }} />
         ) : activePatient ? (
           <>
-            <BayScreen p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onDelete={() => onDeletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
+            <BayScreen p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
               onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onCompleteMedicationVitals={(medicationIndex, timerIndex) => onCompleteMedicationVitals(activeId, medicationIndex, timerIndex)} />
             <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onRetreat={() => onRetreat(activeId)} onBackToNew={() => { setEditingId(activeId); setActiveId("new"); }} onGateContinue={() => onGateContinue(activeId)} />
           </>
