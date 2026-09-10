@@ -657,8 +657,8 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
 
       {p.regimenLabel && <div style={{ fontSize: 14, marginTop: 4, color: MUTED }}>{p.regimenLabel}</div>}
 
-      {p.stage === "infusing" && <CustomCountdown key={p.id} timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
       {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onCompleteMedication={onCompleteMedication} onCompleteMedicationVitals={onCompleteMedicationVitals} />}
+      {p.stage === "infusing" && <CustomCountdown key={p.id} timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
 
       {cfg.timer && (
         <div style={{ marginTop: 24, display: "flex", alignItems: "baseline", gap: 8 }}>
