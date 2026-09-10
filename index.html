@@ -423,6 +423,8 @@ function SettingsScreen({ settings, onChange, onClose }) {
 }
 
 function CompletedLibrary({ patients, onDelete, onClose }) {
+  const vitalsLabel = (value) => value === "every30" ? "Every 30 min" : value === "end" ? "End" : `${value} min`;
+  const medicationStatus = (run) => run.status === "complete" ? "Completed" : run.status === "stopped" ? "Stopped" : run.status === "running" ? "Running when archived" : "Not started";
   return (
     <div style={{ flex: 1, overflowY: "auto", padding: 20, background: PAPER }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -445,9 +447,35 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
                 </div>
                 <button onClick={() => onDelete(patient.id)} style={{ alignSelf: "flex-start", padding: "7px 10px", borderRadius: 7, border: "1px solid #E7B9B6", background: CARD, color: "#B0413E", fontSize: 12 }}>Delete</button>
               </div>
-              {patient.regimenLabel && <div style={{ marginTop: 10, fontSize: 13, color: INK }}>{patient.regimenLabel}</div>}
-              <div style={{ marginTop: 8, fontSize: 12, lineHeight: 1.5, color: MUTED }}>
-                <div>Medications: {(patient.todayMeds || []).map((med) => typeof med === "string" ? med : med.name).join(", ") || "None"}</div>
+              {patient.regimenLabel && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: INK }}>{patient.regimenLabel}</div>}
+              <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#F4F6F5", border: `1px solid ${LINE}` }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: INK, marginBottom: 7 }}>Timer &amp; duration summary</div>
+                <div style={{ fontSize: 12, lineHeight: 1.6, color: MUTED }}>
+                  <div>Premed wait: {Number(patient.premedWaitMin) > 0 ? `${patient.premedWaitMin} min` : "None"}</div>
+                  <div>Observation: {Number(patient.observationMin) > 0 ? `${patient.observationMin} min` : "None"}</div>
+                  <div>Optional alert: {patient.customCountdown?.durationMin ? `${patient.customCountdown.durationMin} min (${patient.customCountdown.status || "saved"})` : "None"}</div>
+                </div>
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: 12, fontWeight: 700, color: INK, marginBottom: 7 }}>Medications, infusions &amp; injections</div>
+                {(patient.medicationRuns || (patient.todayMeds || []).map((med) => typeof med === "string" ? { name: med, status: "pending" } : med)).length ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {(patient.medicationRuns || (patient.todayMeds || []).map((med) => typeof med === "string" ? { name: med, status: "pending" } : med)).map((run, index) => (
+                      <div key={`${run.name}-${index}`} style={{ padding: 10, borderRadius: 8, border: `1px solid ${LINE}`, background: CARD }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: INK }}>{index + 1}. {run.name}</div>
+                        <div style={{ marginTop: 4, fontSize: 11, lineHeight: 1.55, color: MUTED }}>
+                          <div>Status: {medicationStatus(run)}</div>
+                          <div>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "Not specified"}</div>
+                          <div>Actual timer: {Number(run.elapsedSeconds) > 0 ? mmss(Number(run.elapsedSeconds) / 60) : "Not recorded"}{run.startedAt ? ` · Started ${run.startedAt}` : ""}{run.completedAt ? ` · Completed ${run.completedAt}` : ""}</div>
+                          <div>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map(vitalsLabel).join(", ") : "None"}</div>
+                          {(run.vitalsTimers || []).length > 0 && <div>Vitals timers: {run.vitalsTimers.map((timer) => `${timer.label}${timer.completedAt ? ` completed ${timer.completedAt}` : " not completed"}`).join("; ")}</div>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : <div style={{ fontSize: 12, color: MUTED }}>None</div>}
+              </div>
+              <div style={{ marginTop: 12, fontSize: 12, lineHeight: 1.6, color: MUTED }}>
                 <div>Labs: {(patient.labs || []).join(", ") || "None"}</div>
                 <div>Premeds: {(patient.premeds || []).join(", ") || "None"}</div>
                 <div>Notes: {(patient.notes || []).length}</div>
