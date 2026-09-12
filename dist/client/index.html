@@ -808,12 +808,16 @@ function MedicationObservationTimers({ p }) {
 }
 
 function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
+  const screenRef = useRef(null);
   const cfg = STAGES[p.stage];
   const isGated = !!cfg.gate;
   const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
+  useEffect(() => {
+    screenRef.current?.scrollTo({ top: 0, behavior: "auto" });
+  }, [p.id, p.stage]);
 
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: "20px 20px", borderTop: `4px solid ${cfg.color}` }}>
+    <div ref={screenRef} style={{ flex: 1, overflowY: "auto", padding: "20px 20px", borderTop: `4px solid ${cfg.color}` }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: "0.05em", color: MUTED }}>{locWord(p).toUpperCase()} {p.number}</div>
