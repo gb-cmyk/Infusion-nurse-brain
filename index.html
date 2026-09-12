@@ -191,14 +191,15 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   );
 }
 
-function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange }) {
+function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef, onAdvance }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
-  const add = () => {
+  const add = (advance = false) => {
     if (!draft.trim()) return;
     onChange([...items, draft.trim()]);
     setDraft("");
     onPendingChange(false);
+    if (advance) setTimeout(() => onAdvance?.(), 0);
   };
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
@@ -223,22 +224,25 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input ref={inputRef} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
+        <input ref={(element) => { inputRef.current = element; if (forwardedInputRef) forwardedInputRef.current = element; }} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (draft.trim()) add(true); else onAdvance?.(); } }}
           onBlur={() => { if (draft.trim()) setTimeout(() => inputRef.current?.focus(), 0); }}
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
-        <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
+        <button onClick={() => add(false)} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
       {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
     </div>
   );
 }
 
-function MedicationListEditor({ items, onChange }) {
+function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
+  const durationRefs = useRef([]);
   const add = () => {
     if (!draft.trim()) return;
-    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, vitalsSelections: [] }]);
+    const newIndex = items.length;
+    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
     setDraft("");
+    setTimeout(() => { durationRefs.current[newIndex]?.focus(); durationRefs.current[newIndex]?.select(); }, 0);
   };
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
@@ -250,6 +254,8 @@ function MedicationListEditor({ items, onChange }) {
   };
   const setFilterRequired = (i, checked) => onChange(items.map((med, idx) => idx === i ? { ...med, filterRequired: checked } : med));
   const setDuration = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, durationMin: Math.max(0, Number(value) || 0) } : med));
+  const setPostVitalsEnabled = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: !med.postVitalsEnabled, postVitalsMin: Number(med.postVitalsMin) > 0 ? Number(med.postVitalsMin) : 30 } : med));
+  const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
   const toggleVitals = (i, value) => onChange(items.map((med, idx) => {
     if (idx !== i) return med;
     const selections = med.vitalsSelections || [];
@@ -275,7 +281,7 @@ function MedicationListEditor({ items, onChange }) {
               <div style={{ marginTop: 12, marginLeft: 19 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Infusion/injection duration</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input type="number" min="0" inputMode="numeric" value={med.durationMin || 0} onChange={(e) => setDuration(i, e.target.value)} aria-label={`${med.name} duration in minutes`}
+                  <input ref={(element) => { durationRefs.current[i] = element; }} type="number" min="0" inputMode="numeric" value={med.durationMin || 0} onChange={(e) => setDuration(i, e.target.value)} aria-label={`${med.name} duration in minutes`}
                     style={{ width: 72, height: 38, padding: "0 8px", borderRadius: 8, border: `1px solid ${LINE}`, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, textAlign: "center", color: INK }} />
                   <span style={{ fontSize: 12, color: MUTED }}>minutes (0 for no duration)</span>
                 </div>
@@ -289,12 +295,23 @@ function MedicationListEditor({ items, onChange }) {
                   })}
                 </div>
               </div>
+              <div style={{ marginTop: 12, marginLeft: 19 }}>
+                <button onClick={() => setPostVitalsEnabled(i)} style={{ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.postVitalsEnabled ? SELECTED_GREEN : LINE}`, background: med.postVitalsEnabled ? SELECTED_GREEN : CARD, color: med.postVitalsEnabled ? "#FFF" : INK, fontSize: 12, fontWeight: 600 }}>Vitals Post?</button>
+                {med.postVitalsEnabled && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 7, marginTop: 8 }}>
+                    <button onClick={() => setPostVitalsMin(i, Number(med.postVitalsMin || 30) - 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>-</button>
+                    <input type="number" min="1" inputMode="numeric" value={med.postVitalsMin || 30} onChange={(e) => setPostVitalsMin(i, e.target.value)} aria-label={`${med.name} post-medication vitals in minutes`} style={{ width: 64, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, textAlign: "center", fontFamily: "'IBM Plex Mono', monospace", fontSize: 14, color: INK }} />
+                    <button onClick={() => setPostVitalsMin(i, Number(med.postVitalsMin || 30) + 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>+</button>
+                    <span style={{ fontSize: 12, color: MUTED }}>minutes after medication</span>
+                  </div>
+                )}
+              </div>
             </div>
           ))}
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && add()}
+        <input ref={forwardedInputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           placeholder="e.g. Rituximab" style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
       </div>
@@ -305,24 +322,29 @@ function MedicationListEditor({ items, onChange }) {
 function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [initials, setInitials] = useState(patient?.initials || "");
   const [type, setType] = useState(patient?.type || "chair");
-  const [number, setNumber] = useState(patient?.number || 1);
+  const [number, setNumber] = useState(patient?.number ?? "");
   const [regimenLabel, setRegimenLabel] = useState(patient?.regimenLabel || "");
   const [labs, setLabs] = useState(patient?.labs || []);
   const [premeds, setPremeds] = useState(patient?.premeds || []);
-  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, vitalsSelections: patient?.vitalsSelections || [] } : { ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [] }));
+  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, vitalsSelections: patient?.vitalsSelections || [], postVitalsEnabled: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30 }));
   const [observationMin, setObservationMin] = useState(patient?.observationMin || 0);
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const [labsEntryPending, setLabsEntryPending] = useState(false);
   const [premedsEntryPending, setPremedsEntryPending] = useState(false);
+  const numberRef = useRef(null);
+  const regimenRef = useRef(null);
+  const labsRef = useRef(null);
+  const premedsRef = useRef(null);
+  const medicationsRef = useRef(null);
 
   const usedNumbers = existing.filter((p) => p.type === type && p.id !== patient?.id).map((p) => p.number);
-  const numberTaken = usedNumbers.includes(number);
-  const canSave = initials.trim().length > 0 && !numberTaken && todayMeds.length > 0;
+  const numberTaken = number !== "" && usedNumbers.includes(Number(number));
+  const canSave = initials.trim().length > 0 && Number(number) > 0 && !numberTaken && todayMeds.length > 0;
 
   const save = () => {
     if (!canSave) return;
     onSave({
-      ...(patient || {}), id: patient?.id || Date.now(), type, number, initials: initials.trim().toUpperCase(),
+      ...(patient || {}), id: patient?.id || Date.now(), type, number: Number(number), initials: initials.trim().toUpperCase(),
       regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, observationMin,
       premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
     });
@@ -338,7 +360,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
     }} style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
       <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 16 }}>{patient ? "Edit Patient" : "New Patient"}</div>
       <FieldLabel>Initials</FieldLabel>
-      <input value={initials} onChange={(e) => setInitials(e.target.value)} placeholder="e.g. M.R."
+      <input autoFocus={!patient} maxLength="5" value={initials} onChange={(e) => setInitials(e.target.value.slice(0, 5))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); numberRef.current?.focus(); numberRef.current?.select(); } }} placeholder="e.g. M.R."
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
 
       <FieldLabel>Location</FieldLabel>
@@ -351,26 +373,26 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
       <FieldLabel>{type === "chair" ? "Chair" : "Bed"} number</FieldLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
-        <button onClick={() => setNumber(Math.max(1, number - 1))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>-</button>
-        <input type="number" min="1" inputMode="numeric" value={number} onChange={(e) => setNumber(Math.max(1, Number(e.target.value) || 1))}
+        <button onClick={() => setNumber(Math.max(1, (Number(number) || 1) - 1))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>-</button>
+        <input ref={numberRef} type="number" min="1" inputMode="numeric" value={number} onChange={(e) => setNumber(e.target.value === "" ? "" : Math.max(1, Number(e.target.value) || 1))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); regimenRef.current?.focus(); } }}
           aria-label={`${type === "chair" ? "Chair" : "Bed"} number`}
           style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 64, height: 40, textAlign: "center", color: INK, background: CARD, border: `1px solid ${LINE}`, borderRadius: 8 }} />
-        <button onClick={() => setNumber(number + 1)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
+        <button onClick={() => setNumber((Number(number) || 0) + 1)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
       </div>
       {numberTaken ? <div style={{ fontSize: 12, marginBottom: 12, color: "#B0413E" }}>{locWord({ type })} {number} is already in use.</div> : <div style={{ marginBottom: 16 }} />}
 
       <FieldLabel>Regimen / treatment label (optional)</FieldLabel>
-      <input value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} placeholder="i.e. FOLFOX, Iron"
+      <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="i.e. FOLFOX, Iron"
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
 
       <FieldLabel>Labs (optional)</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} /></div>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} onAdvance={() => premedsRef.current?.focus()} /></div>
 
       <FieldLabel>Premeds, in order given</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} /></div>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} forwardedInputRef={premedsRef} onAdvance={() => medicationsRef.current?.focus()} /></div>
 
       <FieldLabel>Today's Medications (Infusions &amp; Injections)</FieldLabel>
-      <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} /></div>
+      <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} forwardedInputRef={medicationsRef} /></div>
 
       {premeds.length > 0 && (<>
         <FieldLabel>Premed wait time before infusing</FieldLabel>
@@ -468,6 +490,7 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
                           <div>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "Not specified"}</div>
                           <div>Actual timer: {Number(run.elapsedSeconds) > 0 ? mmss(Number(run.elapsedSeconds) / 60) : "Not recorded"}{run.startedAt ? ` · Started ${run.startedAt}` : ""}{run.completedAt ? ` · Completed ${run.completedAt}` : ""}</div>
                           <div>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map(vitalsLabel).join(", ") : "None"}</div>
+                          <div>Vitals post: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "None"}</div>
                           {(run.vitalsTimers || []).length > 0 && <div>Vitals timers: {run.vitalsTimers.map((timer) => `${timer.label}${timer.completedAt ? ` completed ${timer.completedAt}` : " not completed"}`).join("; ")}</div>}
                         </div>
                       </div>
@@ -713,6 +736,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onRes
             )}
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "not specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals post: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 14 }}>
               <IconClock size={16} color={MUTED} />
               <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, color: run.status === "running" && hasPrescribedDuration && run.remainingMin === 0 ? "#B0413E" : INK }}>{mmss(timerValue)}</span>
@@ -873,12 +897,12 @@ function loadPatients() {
       }
       if (patient.stage === "infusing" && !patient.medicationRuns) {
         const medications = (patient.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
         patient.currentMedicationIndex = 0;
       }
       if (patient.medicationRuns) patient.medicationRuns = patient.medicationRuns.map((run, index) => {
         const medication = typeof patient.todayMeds?.[index] === "string" ? {} : patient.todayMeds?.[index] || {};
-        let updated = { ...medication, ...run, durationMin: run.durationMin ?? medication.durationMin ?? 0, vitalsSelections: run.vitalsSelections || medication.vitalsSelections || [] };
+        let updated = { ...medication, ...run, durationMin: run.durationMin ?? medication.durationMin ?? 0, vitalsSelections: run.vitalsSelections || medication.vitalsSelections || [], postVitalsEnabled: run.postVitalsEnabled ?? medication.postVitalsEnabled ?? false, postVitalsMin: run.postVitalsMin ?? medication.postVitalsMin ?? 30 };
         if (updated.status === "running" && !updated.startedAtMs) updated.startedAtMs = Date.now() - (updated.elapsedSeconds || 0) * 1000;
         if (updated.status === "running" && Number(updated.durationMin) > 0) {
           updated.expectedEndsAt = updated.expectedEndsAt || updated.startedAtMs + Number(updated.durationMin) * 60000;
@@ -1013,9 +1037,9 @@ function App() {
         if (p.stage === "infusing" && p.medicationRuns?.length) {
           let medicationAlertTriggered = false;
           next.medicationRuns = p.medicationRuns.map((run) => {
-            if (run.status !== "running") return run;
-            const updated = { ...run, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : (run.elapsedSeconds || 0) + 1 };
-            if (run.expectedEndsAt) {
+            const updated = { ...run };
+            if (run.status === "running") updated.elapsedSeconds = run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : (run.elapsedSeconds || 0) + 1;
+            if (run.status === "running" && run.expectedEndsAt) {
               const previousRemaining = run.remainingMin || 0;
               updated.remainingMin = Math.max(0, (run.expectedEndsAt - Date.now()) / 60000);
               if (previousRemaining > 0 && updated.remainingMin === 0 && !run.durationAlerted) {
@@ -1111,9 +1135,9 @@ function App() {
       if (next === "premed-wait") updated.premedAlert = false;
       if (next === "infusing") {
         const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []));
+        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
         if (!runsMatch) {
-          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
           updated.currentMedicationIndex = 0;
         }
       }
@@ -1221,7 +1245,13 @@ function App() {
     } : run) } : p));
   }, []);
   const onCompleteMedication = useCallback((id, index) => {
-    setPatients((prev) => prev.map((p) => p.id === id ? { ...p, medicationRuns: p.medicationRuns.map((run, i) => i === index && run.status === "running" ? { ...run, status: "complete", completedAt: nowTime(), completedAtMs: Date.now(), elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((Date.now() - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0 } : run) } : p));
+    setPatients((prev) => prev.map((p) => p.id === id ? { ...p, medicationRuns: p.medicationRuns.map((run, i) => {
+      if (i !== index || run.status !== "running") return run;
+      const completedAtMs = Date.now();
+      const postVitalsMin = Number(run.postVitalsMin) || 30;
+      const postTimer = run.postVitalsEnabled ? [{ key: "post", label: `Post-med vitals at ${postVitalsMin} min`, dueAt: completedAtMs + postVitalsMin * 60000, remaining: postVitalsMin, recurring: false }] : [];
+      return { ...run, status: "complete", completedAt: nowTime(), completedAtMs, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((completedAtMs - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0, vitalsTimers: [...(run.vitalsTimers || []), ...postTimer] };
+    }) } : p));
   }, []);
   const onNextMedication = useCallback((id, index) => {
     setPatients((prev) => prev.map((p) => {
