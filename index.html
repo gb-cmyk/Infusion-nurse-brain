@@ -146,12 +146,16 @@ function activeCountdowns(patient) {
   if (patient.stage === "infusing") {
     (patient.medicationRuns || []).forEach((run, medicationIndex) => {
       if (run.status === "running" && run.expectedEndsAt) add(`M${medicationIndex + 1}`, run.remainingMin);
+      if (run.observationTimer?.dueAt && run.observationTimer.remaining > 0) add(`O${medicationIndex + 1}`, run.observationTimer.remaining);
       (run.vitalsTimers || []).forEach((timer) => {
         if (!timer.completedAt && timer.dueAt) add(`V${medicationIndex + 1}`, timer.remaining);
       });
     });
     if (patient.customCountdown?.status === "running") add("ALT", patient.customCountdown.remaining);
   }
+  if (patient.stage === "observation") (patient.medicationRuns || []).forEach((run, medicationIndex) => {
+    if (run.observationTimer?.dueAt && run.observationTimer.remaining > 0) add(`O${medicationIndex + 1}`, run.observationTimer.remaining);
+  });
   return timers.sort((a, b) => a.remaining - b.remaining);
 }
 
@@ -191,15 +195,14 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   );
 }
 
-function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef, onAdvance }) {
+function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
-  const add = (advance = false) => {
+  const add = () => {
     if (!draft.trim()) return;
     onChange([...items, draft.trim()]);
     setDraft("");
     onPendingChange(false);
-    if (advance) setTimeout(() => onAdvance?.(), 0);
   };
   const remove = (i) => onChange(items.filter((_, idx) => idx !== i));
   const move = (i, dir) => {
@@ -224,10 +227,10 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
         </div>
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <input ref={(element) => { inputRef.current = element; if (forwardedInputRef) forwardedInputRef.current = element; }} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (draft.trim()) add(true); else onAdvance?.(); } }}
+        <input ref={(element) => { inputRef.current = element; if (forwardedInputRef) forwardedInputRef.current = element; }} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           onBlur={() => { if (draft.trim()) setTimeout(() => inputRef.current?.focus(), 0); }}
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
-        <button onClick={() => add(false)} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
+        <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
       {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
     </div>
@@ -240,7 +243,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const add = () => {
     if (!draft.trim()) return;
     const newIndex = items.length;
-    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
+    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
     setDraft("");
     setTimeout(() => { durationRefs.current[newIndex]?.focus(); durationRefs.current[newIndex]?.select(); }, 0);
   };
@@ -254,6 +257,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   };
   const setFilterRequired = (i, checked) => onChange(items.map((med, idx) => idx === i ? { ...med, filterRequired: checked } : med));
   const setDuration = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, durationMin: Math.max(0, Number(value) || 0) } : med));
+  const setObservation = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, observationMin: Math.max(0, Number(value) || 0) } : med));
   const setPostVitalsEnabled = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: !med.postVitalsEnabled, postVitalsMin: Number(med.postVitalsMin) > 0 ? Number(med.postVitalsMin) : 30 } : med));
   const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
   const toggleVitals = (i, value) => onChange(items.map((med, idx) => {
@@ -266,7 +270,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
       {items.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 8 }}>
           {items.map((med, i) => (
-            <div key={i} style={{ padding: "8px 10px", borderRadius: 8, background: PAPER, border: `1px solid ${LINE}` }}>
+            <div key={i} style={{ padding: "8px 10px", borderRadius: 8, background: ["#F1F3F3", "#EEF5FA", "#EFF7F1"][i % 3], border: `1px solid ${LINE}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED }}>{i + 1}</span>
                 <span style={{ flex: 1, fontSize: 14, color: INK }}>{med.name}</span>
@@ -293,6 +297,16 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                     const selected = (med.vitalsSelections || []).includes(option.value);
                     return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? SELECTED_GREEN : LINE}`, background: selected ? SELECTED_GREEN : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
                   })}
+                </div>
+              </div>
+              <div style={{ marginTop: 12, marginLeft: 19 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Observation period after this medication</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button onClick={() => setObservation(i, Number(med.observationMin || 0) - 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>-</button>
+                  <input type="number" min="0" inputMode="numeric" value={med.observationMin || 0} onChange={(e) => setObservation(i, e.target.value)} aria-label={`${med.name} observation duration in minutes`} style={{ width: 64, height: 36, borderRadius: 7, border: `1px solid ${Number(med.observationMin) > 0 ? SELECTED_GREEN : LINE}`, background: Number(med.observationMin) > 0 ? SELECTED_GREEN : CARD, color: Number(med.observationMin) > 0 ? "#FFF" : INK, textAlign: "center", fontFamily: "'IBM Plex Mono', monospace", fontSize: 14 }} />
+                  <button onClick={() => setObservation(i, Number(med.observationMin || 0) + 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>+</button>
+                  <button onClick={() => setObservation(i, 30)} style={{ padding: "9px 8px", borderRadius: 7, border: `1px solid ${Number(med.observationMin) === 30 ? SELECTED_GREEN : LINE}`, background: Number(med.observationMin) === 30 ? SELECTED_GREEN : CARD, color: Number(med.observationMin) === 30 ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>30 min</button>
+                  <button onClick={() => setObservation(i, 0)} style={{ padding: "9px 7px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11 }}>Clear</button>
                 </div>
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
@@ -326,8 +340,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [regimenLabel, setRegimenLabel] = useState(patient?.regimenLabel || "");
   const [labs, setLabs] = useState(patient?.labs || []);
   const [premeds, setPremeds] = useState(patient?.premeds || []);
-  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, vitalsSelections: patient?.vitalsSelections || [], postVitalsEnabled: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30 }));
-  const [observationMin, setObservationMin] = useState(patient?.observationMin || 0);
+  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med, index, all) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, observationMin: all.length === 1 ? patient?.observationMin || 0 : 0, vitalsSelections: patient?.vitalsSelections || [], postVitalsEnabled: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, observationMin: med.observationMin ?? (all.length === 1 ? patient?.observationMin || 0 : 0), vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30 }));
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const [labsEntryPending, setLabsEntryPending] = useState(false);
   const [premedsEntryPending, setPremedsEntryPending] = useState(false);
@@ -345,7 +358,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
     if (!canSave) return;
     onSave({
       ...(patient || {}), id: patient?.id || Date.now(), type, number: Number(number), initials: initials.trim().toUpperCase(),
-      regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, observationMin,
+      regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, observationMin: Math.max(0, ...todayMeds.map((med) => Number(med.observationMin) || 0)),
       premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
     });
   };
@@ -386,13 +399,10 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
 
       <FieldLabel>Labs (optional)</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} onAdvance={() => premedsRef.current?.focus()} /></div>
+      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} /></div>
 
       <FieldLabel>Premeds, in order given</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} forwardedInputRef={premedsRef} onAdvance={() => medicationsRef.current?.focus()} /></div>
-
-      <FieldLabel>Today's Medications (Infusions &amp; Injections)</FieldLabel>
-      <div style={{ marginBottom: 16 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} forwardedInputRef={medicationsRef} /></div>
+      <div style={{ marginBottom: premeds.length > 0 ? 8 : 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} forwardedInputRef={premedsRef} /></div>
 
       {premeds.length > 0 && (<>
         <FieldLabel>Premed wait time before infusing</FieldLabel>
@@ -403,13 +413,8 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
         </div>
       </>)}
 
-      <FieldLabel>Observation period after infusion</FieldLabel>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 24 }}>
-        <Stepper value={observationMin} onChange={setObservationMin} step={5} min={0} highlighted={observationMin > 0} />
-        <button onClick={() => setObservationMin(30)} style={{ padding: "10px 8px", borderRadius: 8, border: `1px solid ${observationMin === 30 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 30 ? "#FFF" : ACCENT, background: observationMin === 30 ? SELECTED_GREEN : CARD, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>30 min</button>
-        <button onClick={() => setObservationMin(60)} style={{ padding: "10px 8px", borderRadius: 8, border: `1px solid ${observationMin === 60 ? SELECTED_GREEN : ACCENT}`, color: observationMin === 60 ? "#FFF" : ACCENT, background: observationMin === 60 ? SELECTED_GREEN : CARD, fontSize: 11, fontWeight: 600, whiteSpace: "nowrap" }}>60 min</button>
-        <button onClick={() => setObservationMin(0)} style={{ padding: "10px 7px", borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, fontSize: 11, fontWeight: 600 }}>Clear</button>
-      </div>
+      <FieldLabel>Today's Medications (Infusions &amp; Injections)</FieldLabel>
+      <div style={{ marginBottom: 24 }}><MedicationListEditor items={todayMeds} onChange={setTodayMeds} forwardedInputRef={medicationsRef} /></div>
 
       <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
         <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, border: `1px solid ${LINE}`, color: MUTED, background: CARD }}>Cancel</button>
@@ -491,6 +496,8 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
                           <div>Actual timer: {Number(run.elapsedSeconds) > 0 ? mmss(Number(run.elapsedSeconds) / 60) : "Not recorded"}{run.startedAt ? ` · Started ${run.startedAt}` : ""}{run.completedAt ? ` · Completed ${run.completedAt}` : ""}</div>
                           <div>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map(vitalsLabel).join(", ") : "None"}</div>
                           <div>Vitals post: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "None"}</div>
+                          <div>Observation after medication: {Number(run.observationMin) > 0 ? `${run.observationMin} min` : "None"}</div>
+                          {run.observationTimer && <div>Observation timer: {run.observationTimer.remaining === 0 ? "Completed" : `${mmss(run.observationTimer.remaining || 0)} remaining`}</div>}
                           {(run.vitalsTimers || []).length > 0 && <div>Vitals timers: {run.vitalsTimers.map((timer) => `${timer.label}${timer.completedAt ? ` completed ${timer.completedAt}` : " not completed"}`).join("; ")}</div>}
                         </div>
                       </div>
@@ -737,6 +744,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onRes
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : "not specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals post: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Observation after medication: {Number(run.observationMin) > 0 ? `${run.observationMin} min` : "none specified"}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 14 }}>
               <IconClock size={16} color={MUTED} />
               <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 28, color: run.status === "running" && hasPrescribedDuration && run.remainingMin === 0 ? "#B0413E" : INK }}>{mmss(timerValue)}</span>
@@ -765,6 +773,25 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onRes
   );
 }
 
+function MedicationObservationTimers({ p }) {
+  const runs = (p.medicationRuns || []).filter((run) => Number(run.observationMin) > 0);
+  return (
+    <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 10 }}>
+      {runs.map((run, index) => {
+        const timer = run.observationTimer;
+        const complete = timer && timer.remaining === 0;
+        return (
+          <div key={`${run.name}-${index}`} style={{ padding: 16, borderRadius: 10, background: complete ? "#E8F3EE" : CARD, border: `1px solid ${complete ? "#A8D0BC" : LINE}` }}>
+            <div style={{ fontSize: 14, fontWeight: 600, color: INK }}>{run.name}</div>
+            <div className="tabular-nums" style={{ marginTop: 8, fontFamily: "'IBM Plex Mono', monospace", fontSize: 30, color: complete ? SELECTED_GREEN : INK }}>{mmss(timer?.remaining ?? Number(run.observationMin))}</div>
+            <div style={{ marginTop: 3, fontSize: 12, color: MUTED }}>{complete ? "Observation complete" : `${run.observationMin} min observation after medication`}</div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const cfg = STAGES[p.stage];
   const isGated = !!cfg.gate;
@@ -784,8 +811,9 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
 
       {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onResetMedication={onResetMedication} onCompleteMedication={onCompleteMedication} onCompleteMedicationVitals={onCompleteMedicationVitals} />}
       {p.stage === "infusing" && <CustomCountdown key={p.id} timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
+      {p.stage === "observation" && <MedicationObservationTimers p={p} />}
 
-      {cfg.timer && (
+      {cfg.timer && p.stage !== "observation" && (
         <div style={{ marginTop: 24, display: "flex", alignItems: "baseline", gap: 8 }}>
           <IconClock size={18} color={MUTED} />
           <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 48, color: INK }}>{mmss(p.remaining)}</span>
@@ -921,6 +949,14 @@ function loadPatients() {
           }
           return { ...timer, remaining };
         });
+        if (updated.observationTimer?.dueAt) {
+          const remaining = Math.max(0, (updated.observationTimer.dueAt - Date.now()) / 60000);
+          updated.observationTimer = { ...updated.observationTimer, remaining };
+          if (remaining === 0 && !updated.observationTimer.alerted) {
+            updated.observationTimer.alerted = true;
+            patient.timerAlert = true;
+          }
+        }
         return updated;
       });
       return patient;
@@ -1034,7 +1070,7 @@ function App() {
             next.stageTimerAlerted = true;
           }
         }
-        if (p.stage === "infusing" && p.medicationRuns?.length) {
+        if ((p.stage === "infusing" || p.stage === "observation") && p.medicationRuns?.length) {
           let medicationAlertTriggered = false;
           next.medicationRuns = p.medicationRuns.map((run) => {
             const updated = { ...run };
@@ -1056,6 +1092,15 @@ function App() {
               }
               return { ...timer, remaining };
             });
+            if (run.observationTimer?.dueAt) {
+              const previousRemaining = run.observationTimer.remaining || 0;
+              const remaining = Math.max(0, (run.observationTimer.dueAt - Date.now()) / 60000);
+              updated.observationTimer = { ...run.observationTimer, remaining };
+              if (previousRemaining > 0 && remaining === 0 && !run.observationTimer.alerted) {
+                updated.observationTimer.alerted = true;
+                medicationAlertTriggered = true;
+              }
+            }
             return updated;
           });
           if (medicationAlertTriggered) next.timerAlert = true;
@@ -1121,9 +1166,14 @@ function App() {
         updated.remaining = 0;
         updated.stageTimerAlerted = true;
         updated.timerAlert = false;
+        updated.medicationRuns = (p.medicationRuns || []).map((run) => ({ ...run, observationTimer: run.observationTimer ? { ...run.observationTimer, dueAt: null, alerted: false } : null }));
       }
       if (nextCfg.timer) {
-        if (next === "premed-wait" && p.premedTimerStarted && p.timerEndsAt) {
+        if (next === "observation") {
+          updated.remaining = 0;
+          updated.timerEndsAt = null;
+          updated.stageTimerAlerted = true;
+        } else if (next === "premed-wait" && p.premedTimerStarted && p.timerEndsAt) {
           updated.remaining = Math.max(0, (p.timerEndsAt - Date.now()) / 60000);
           updated.timerEndsAt = p.timerEndsAt;
         } else {
@@ -1135,7 +1185,7 @@ function App() {
       if (next === "premed-wait") updated.premedAlert = false;
       if (next === "infusing") {
         const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
+        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && Number(run.observationMin || 0) === Number(medications[index].observationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
         if (!runsMatch) {
           updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
           updated.currentMedicationIndex = 0;
@@ -1242,6 +1292,7 @@ function App() {
       remainingMin: Number(run.durationMin) > 0 ? Number(run.durationMin) : null,
       durationAlerted: false,
       vitalsTimers: [],
+      observationTimer: null,
     } : run) } : p));
   }, []);
   const onCompleteMedication = useCallback((id, index) => {
@@ -1250,7 +1301,9 @@ function App() {
       const completedAtMs = Date.now();
       const postVitalsMin = Number(run.postVitalsMin) || 30;
       const postTimer = run.postVitalsEnabled ? [{ key: "post", label: `Post-med vitals at ${postVitalsMin} min`, dueAt: completedAtMs + postVitalsMin * 60000, remaining: postVitalsMin, recurring: false }] : [];
-      return { ...run, status: "complete", completedAt: nowTime(), completedAtMs, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((completedAtMs - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0, vitalsTimers: [...(run.vitalsTimers || []), ...postTimer] };
+      const observationMin = Number(run.observationMin) || 0;
+      const observationTimer = observationMin > 0 ? { durationMin: observationMin, dueAt: completedAtMs + observationMin * 60000, remaining: observationMin, alerted: false } : null;
+      return { ...run, status: "complete", completedAt: nowTime(), completedAtMs, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((completedAtMs - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0, vitalsTimers: [...(run.vitalsTimers || []), ...postTimer], observationTimer };
     }) } : p));
   }, []);
   const onNextMedication = useCallback((id, index) => {
