@@ -457,9 +457,15 @@ function SettingsScreen({ settings, onChange, onClose }) {
   );
 }
 
-function CompletedLibrary({ patients, onDelete, onClose }) {
+function CompletedLibrary({ patients, onDelete, onDeleteAll, onClose }) {
+  const [expandedIds, setExpandedIds] = useState({});
   const vitalsLabel = (value) => value === "every30" ? "Every 30 min" : value === "end" ? "End" : `${value} min`;
   const medicationStatus = (run) => run.status === "complete" ? "Completed" : run.status === "stopped" ? "Stopped" : run.status === "running" ? "Running when archived" : "Not started";
+  const sortedPatients = patients.slice().sort((a, b) => {
+    const typeDifference = (a.type === "chair" ? 0 : 1) - (b.type === "chair" ? 0 : 1);
+    return typeDifference || Number(a.number || 0) - Number(b.number || 0) || String(a.initials || "").localeCompare(String(b.initials || ""));
+  });
+  const toggleExpanded = (id) => setExpandedIds((current) => ({ ...current, [id]: !current[id] }));
   return (
     <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, background: PAPER }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
@@ -467,21 +473,27 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
           <div style={{ fontSize: 20, fontWeight: 600, color: INK }}>Completed Library</div>
           <div style={{ marginTop: 3, fontSize: 12, color: MUTED }}>{patients.length} completed patient{patients.length === 1 ? "" : "s"}</div>
         </div>
-        <button onClick={onClose} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14 }}>Done</button>
+        <div style={{ display: "flex", gap: 8 }}>
+          {patients.length > 0 && <button onClick={onDeleteAll} style={{ padding: "8px 10px", borderRadius: 8, border: "1px solid #E7B9B6", background: CARD, color: "#B0413E", fontSize: 13 }}>Delete All</button>}
+          <button onClick={onClose} style={{ padding: "8px 14px", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14 }}>Done</button>
+        </div>
       </div>
       {patients.length === 0 ? (
         <div style={{ padding: 24, textAlign: "center", borderRadius: 10, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14 }}>No completed patients yet.</div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {patients.slice().reverse().map((patient) => (
-            <div key={patient.id} style={{ padding: 16, borderRadius: 10, border: `1px solid ${LINE}`, background: CARD }}>
-              <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                <div>
+          {sortedPatients.map((patient) => {
+            const expanded = !!expandedIds[patient.id];
+            return (
+            <div key={patient.id} style={{ padding: expanded ? 16 : 12, borderRadius: 10, border: `1px solid ${LINE}`, background: CARD }}>
+              <button onClick={() => toggleExpanded(patient.id)} aria-expanded={expanded} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, padding: 0, border: "none", background: "transparent", textAlign: "left" }}>
+                <div style={{ minWidth: 0 }}>
                   <div style={{ fontSize: 16, fontWeight: 700, color: INK }}>{locWord(patient)} {patient.number} · {patient.initials}</div>
                   <div style={{ marginTop: 3, fontSize: 12, color: MUTED }}>Completed {patient.completedVisitAt ? new Date(patient.completedVisitAt).toLocaleString() : ""}</div>
                 </div>
-                <button onClick={() => onDelete(patient.id)} style={{ alignSelf: "flex-start", padding: "7px 10px", borderRadius: 7, border: "1px solid #E7B9B6", background: CARD, color: "#B0413E", fontSize: 12 }}>Delete</button>
-              </div>
+                {expanded ? <IconUp size={18} color={MUTED} /> : <IconDown size={18} color={MUTED} />}
+              </button>
+              {expanded && <>
               {patient.regimenLabel && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: INK }}>{patient.regimenLabel}</div>}
               <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#F4F6F5", border: `1px solid ${LINE}` }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: INK, marginBottom: 7 }}>Timer &amp; duration summary</div>
@@ -518,8 +530,10 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
                 <div>Premeds: {(patient.premeds || []).join(", ") || "None"}</div>
                 <div>Notes: {(patient.notes || []).length}</div>
               </div>
+              <button onClick={() => onDelete(patient.id)} style={{ marginTop: 12, padding: "7px 10px", borderRadius: 7, border: "1px solid #E7B9B6", background: CARD, color: "#B0413E", fontSize: 12 }}>Delete Patient</button>
+              </>}
             </div>
-          ))}
+          )})}
         </div>
       )}
     </div>
@@ -1424,6 +1438,11 @@ function App() {
     setCompletedPatients((current) => current.filter((entry) => entry.id !== id));
   }, [completedPatients]);
 
+  const onDeleteAllCompletedPatients = useCallback(() => {
+    if (completedPatients.length === 0 || !window.confirm(`Permanently delete all ${completedPatients.length} patients from the Completed Library?`)) return;
+    setCompletedPatients([]);
+  }, [completedPatients]);
+
   const onSelectPatient = useCallback((id) => {
     setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, premedAlert: false, timerAlert: false } : patient));
     vibratedAlertsRef.current.delete(id);
@@ -1446,7 +1465,7 @@ function App() {
       <div style={{ width: "100%", maxWidth: PHONE_W, height: "100dvh", minHeight: 0, overflow: "hidden", background: PAPER, display: "flex", flexDirection: "column" }}>
         <TabBar patients={patients} activeId={activeId} onSelect={onSelectPatient} onAddTab={() => { setEditingId(null); setShowSettings(false); setShowLibrary(false); setActiveId("new"); }} onLibrary={() => { setShowLibrary(true); setShowSettings(false); }} onSettings={() => { setShowSettings(true); setShowLibrary(false); }} libraryActive={showLibrary} settingsActive={showSettings} />
         {showLibrary ? (
-          <CompletedLibrary patients={completedPatients} onDelete={onDeleteCompletedPatient} onClose={() => setShowLibrary(false)} />
+          <CompletedLibrary patients={completedPatients} onDelete={onDeleteCompletedPatient} onDeleteAll={onDeleteAllCompletedPatients} onClose={() => setShowLibrary(false)} />
         ) : showSettings ? (
           <SettingsScreen settings={settings} onChange={onChangeSetting} onClose={() => setShowSettings(false)} />
         ) : activeId === "new" ? (
