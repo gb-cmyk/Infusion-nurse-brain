@@ -86,12 +86,15 @@ const STAGES = {
 const GENERAL_CHECKLIST = ["Allergies reviewed", "Treatment parameters met?", "Labs released?", "All Therapy Plans Reviewed", "Required consent done (i.e. chemo, blood)?", "Treatment signed & readied by pharmacy?", "Patient assessment"];
 const DISCHARGE_CHECKLIST = [
   "Next appointment scheduled",
-  "IV site documented (removal, condition)",
   "MAR reviewed \u2014 all administered meds charted",
+  "Home pump? Clamp check.",
+  "Chair/Room cleaned",
+];
+const COMPLETE_CHECKLIST = [
+  "IV site documented (removal, condition)",
   "All vitals completed",
   "Charges captured for medications given",
   "If #1, are education and systems assessment done?",
-  "Home pump? Clamp check.",
 ];
 
 function buildPreInfusionChecklist(patient) {
@@ -814,6 +817,7 @@ function MedicationObservationTimers({ p }) {
 function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const screenRef = useRef(null);
   const cfg = STAGES[p.stage];
+  const completeReady = COMPLETE_CHECKLIST.every((_, index) => !!checked[index]);
   const isGated = !!cfg.gate;
   const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
   useEffect(() => {
@@ -858,7 +862,15 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
             <IconCheck size={20} color={cfg.color} />
             <span style={{ fontSize: 15, color: INK }}>Visit complete. Save this patient to free the chair.</span>
           </div>
-          <button onClick={onCompletePatient} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: SELECTED_GREEN, color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
+            {COMPLETE_CHECKLIST.map((item, index) => (
+              <label key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "11px 10px", borderRadius: 8, background: checked[index] ? "#EAF4EF" : "#FFF", border: `1px solid ${checked[index] ? SELECTED_GREEN : LINE}`, fontSize: 14, lineHeight: 1.35, color: INK }}>
+                <input type="checkbox" checked={!!checked[index]} onChange={() => onToggleCheck(index)} style={{ width: 20, height: 20, flexShrink: 0 }} />
+                <span>{item}</span>
+              </label>
+            ))}
+          </div>
+          <button onClick={onCompletePatient} disabled={!completeReady} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: completeReady ? SELECTED_GREEN : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
         </div>
       )}
 
