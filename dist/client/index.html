@@ -15,6 +15,7 @@
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js" crossorigin></script>
 <style>
+  html, body, #root { height: 100%; overflow: hidden; }
   html, body { margin: 0; padding: 0; background: #E7E9E7; -webkit-tap-highlight-color: transparent; }
   * { box-sizing: border-box; }
   body { font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
@@ -370,7 +371,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
         event.preventDefault();
         event.stopPropagation();
       }
-    }} style={{ flex: 1, overflowY: "auto", padding: "20px 20px" }}>
+    }} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 20px" }}>
       <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 16 }}>{patient ? "Edit Patient" : "New Patient"}</div>
       <FieldLabel>Initials</FieldLabel>
       <input autoFocus={!patient} maxLength="5" value={initials} onChange={(e) => setInitials(e.target.value.slice(0, 5))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); numberRef.current?.focus(); numberRef.current?.select(); } }} placeholder="e.g. M.R."
@@ -452,7 +453,7 @@ function CompletedLibrary({ patients, onDelete, onClose }) {
   const vitalsLabel = (value) => value === "every30" ? "Every 30 min" : value === "end" ? "End" : `${value} min`;
   const medicationStatus = (run) => run.status === "complete" ? "Completed" : run.status === "stopped" ? "Stopped" : run.status === "running" ? "Running when archived" : "Not started";
   return (
-    <div style={{ flex: 1, overflowY: "auto", padding: 20, background: PAPER }}>
+    <div style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: 20, background: PAPER }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 18 }}>
         <div>
           <div style={{ fontSize: 20, fontWeight: 600, color: INK }}>Completed Library</div>
@@ -817,7 +818,7 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
   }, [p.id, p.stage]);
 
   return (
-    <div ref={screenRef} style={{ flex: 1, overflowY: "auto", padding: "20px 20px", borderTop: `4px solid ${cfg.color}` }}>
+    <div ref={screenRef} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 20px", borderTop: `4px solid ${cfg.color}` }}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between" }}>
         <div>
           <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, letterSpacing: "0.05em", color: MUTED }}>{locWord(p).toUpperCase()} {p.number}</div>
@@ -894,7 +895,7 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
     (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || p.premedTimerStarted);
   const allMedicationsComplete = p.stage !== "infusing" || ((p.medicationRuns || []).length > 0 && p.medicationRuns.every((run) => run.status === "complete"));
   return (
-    <div style={{ display: "flex", gap: 8, padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
+    <div style={{ display: "flex", flexShrink: 0, gap: 8, padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
       {(previousStage || p.stage === "chart-review") && (
         <button onClick={previousStage ? onRetreat : onBackToNew} style={{ flex: 1, fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: CARD, color: MUTED, border: `1px solid ${LINE}` }}>
           {previousStage ? `Back to: ${STAGES[previousStage].label}` : "Back to New Patient"}
@@ -1424,8 +1425,8 @@ function App() {
   const activeChecked = activeId === "new" || !activePatient ? {} : checkedMap[activeId]?.[activePatient.stage] || {};
 
   return (
-    <div onPointerDown={primeAudio} style={{ width: "100%", display: "flex", justifyContent: "center", background: "#E7E9E7", minHeight: "100vh" }}>
-      <div style={{ width: "100%", maxWidth: PHONE_W, minHeight: "100vh", background: PAPER, display: "flex", flexDirection: "column" }}>
+    <div onPointerDown={primeAudio} style={{ width: "100%", height: "100dvh", minHeight: 0, overflow: "hidden", display: "flex", justifyContent: "center", background: "#E7E9E7" }}>
+      <div style={{ width: "100%", maxWidth: PHONE_W, height: "100dvh", minHeight: 0, overflow: "hidden", background: PAPER, display: "flex", flexDirection: "column" }}>
         <TabBar patients={patients} activeId={activeId} onSelect={onSelectPatient} onAddTab={() => { setEditingId(null); setShowSettings(false); setShowLibrary(false); setActiveId("new"); }} onLibrary={() => { setShowLibrary(true); setShowSettings(false); }} onSettings={() => { setShowSettings(true); setShowLibrary(false); }} libraryActive={showLibrary} settingsActive={showSettings} />
         {showLibrary ? (
           <CompletedLibrary patients={completedPatients} onDelete={onDeleteCompletedPatient} onClose={() => setShowLibrary(false)} />
