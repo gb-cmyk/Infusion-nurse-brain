@@ -858,6 +858,10 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
             <IconCheck size={20} color={cfg.color} />
             <span style={{ fontSize: 15, color: INK }}>Visit complete. Save this patient to free the chair.</span>
           </div>
+          <label style={{ display: "flex", alignItems: "flex-start", gap: 10, marginTop: 16, padding: "12px 10px", borderRadius: 8, background: checked[0] ? "#EAF4EF" : "#FFF", border: `1px solid ${checked[0] ? SELECTED_GREEN : LINE}`, fontSize: 14, lineHeight: 1.35, color: INK }}>
+            <input type="checkbox" checked={!!checked[0]} onChange={() => onToggleCheck(0)} style={{ width: 20, height: 20, flexShrink: 0 }} />
+            <span>All documentation complete? Medications, assessments</span>
+          </label>
           <button onClick={onCompletePatient} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: SELECTED_GREEN, color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
         </div>
       )}
