@@ -284,11 +284,11 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                 Filter required?
               </label>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Infusion/injection duration</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Infusion/injection duration (required)</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <input ref={(element) => { durationRefs.current[i] = element; }} type="number" min="0" inputMode="numeric" value={med.durationMin || 0} onChange={(e) => setDuration(i, e.target.value)} aria-label={`${med.name} duration in minutes`}
-                    style={{ width: 72, height: 38, padding: "0 8px", borderRadius: 8, border: `1px solid ${LINE}`, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, textAlign: "center", color: INK }} />
-                  <span style={{ fontSize: 12, color: MUTED }}>minutes (0 for no duration)</span>
+                  <input ref={(element) => { durationRefs.current[i] = element; }} type="number" min="1" inputMode="numeric" required value={med.durationMin || 0} onChange={(e) => setDuration(i, e.target.value)} aria-label={`${med.name} duration in minutes`}
+                    aria-invalid={Number(med.durationMin) <= 0} style={{ width: 72, height: 38, padding: "0 8px", borderRadius: 8, border: `2px solid ${Number(med.durationMin) > 0 ? LINE : "#B0413E"}`, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, textAlign: "center", color: INK }} />
+                  <span style={{ fontSize: 12, color: Number(med.durationMin) > 0 ? MUTED : "#B0413E" }}>{Number(med.durationMin) > 0 ? "minutes" : "Enter minutes to continue"}</span>
                 </div>
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
@@ -353,7 +353,8 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
   const usedNumbers = existing.filter((p) => p.type === type && p.id !== patient?.id).map((p) => p.number);
   const numberTaken = number !== "" && usedNumbers.includes(Number(number));
-  const canSave = initials.trim().length > 0 && Number(number) > 0 && !numberTaken && todayMeds.length > 0;
+  const allMedicationDurationsEntered = todayMeds.length > 0 && todayMeds.every((med) => Number(med.durationMin) > 0);
+  const canSave = initials.trim().length > 0 && Number(number) > 0 && !numberTaken && allMedicationDurationsEntered;
 
   const save = () => {
     if (!canSave) return;
@@ -420,7 +421,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
         <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, border: `1px solid ${LINE}`, color: MUTED, background: CARD }}>Cancel</button>
         <button onClick={save} disabled={!canSave} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, background: canSave ? ACCENT : "#C9DAD3", color: "#FFF", border: "none" }}>{patient ? "Save patient" : "Add patient"}</button>
       </div>
-      {!canSave && <div style={{ fontSize: 12, paddingBottom: 24, color: MUTED }}>Needs initials, an open {type} number, and at least one medication for today.</div>}
+      {!canSave && <div style={{ fontSize: 12, paddingBottom: 24, color: MUTED }}>Needs initials, an open {type} number, at least one medication, and a duration for every medication.</div>}
     </div>
   );
 }
