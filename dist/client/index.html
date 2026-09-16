@@ -412,7 +412,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Bladder, Iron"
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
 
-      <FieldLabel>Labs (optional)</FieldLabel>
+      <FieldLabel>Labs to be drawn today</FieldLabel>
       <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} /></div>
 
       <FieldLabel>Premeds, in order given</FieldLabel>
