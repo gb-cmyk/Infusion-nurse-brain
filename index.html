@@ -154,6 +154,9 @@ function activeCountdowns(patient) {
   if (patient.stage === "infusing") {
     (patient.medicationRuns || []).forEach((run, medicationIndex) => {
       if (run.status === "running" && run.expectedEndsAt) add(`M${medicationIndex + 1}`, run.remainingMin);
+      if (run.status === "running" && !run.expectedEndsAt && (run.countUpOnly || !Number(run.durationMin))) {
+        timers.push({ label: `M${medicationIndex + 1}↑`, remaining: (run.elapsedSeconds || 0) / 60, countUp: true });
+      }
       if (run.observationTimer?.dueAt && run.observationTimer.remaining > 0) add(`O${medicationIndex + 1}`, run.observationTimer.remaining);
       (run.vitalsTimers || []).forEach((timer) => {
         if (!timer.completedAt && timer.dueAt) add(`V${medicationIndex + 1}`, timer.remaining);
@@ -164,7 +167,7 @@ function activeCountdowns(patient) {
   if (patient.stage === "observation") (patient.medicationRuns || []).forEach((run, medicationIndex) => {
     if (run.observationTimer?.dueAt && run.observationTimer.remaining > 0) add(`O${medicationIndex + 1}`, run.observationTimer.remaining);
   });
-  return timers.sort((a, b) => a.remaining - b.remaining);
+  return timers.sort((a, b) => Number(!!b.countUp) - Number(!!a.countUp) || a.remaining - b.remaining);
 }
 
 function useVoiceInput(onResult) {
