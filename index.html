@@ -195,6 +195,41 @@ function FieldLabel({ children }) {
   return <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 6 }}>{children}</div>;
 }
 
+function useTerminology() {
+  const [terms, setTerms] = useState([]);
+  useEffect(() => {
+    Promise.all([
+      fetch("SpeechTerminology/medical_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
+      fetch("SpeechTerminology/oncology_infusion_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
+    ]).then(([base, oncology]) => {
+      const normalized = [...(base.entries || []), ...(oncology.entries || [])].map((term) => ({
+        canonical: term.canonical,
+        category: term.category,
+        names: [term.canonical, ...(term.aliases || []), ...(term.spoken || []), ...(term.brands || [])],
+      }));
+      setTerms(normalized);
+    }).catch(() => setTerms([]));
+  }, []);
+  return terms;
+}
+
+function TerminologySuggestions({ query, terms, onSelect, premedOnly = false }) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return null;
+  const matches = terms.filter((term) => (!premedOnly || term.category === "premedication") && term.names.some((name) => name.toLowerCase().includes(needle)))
+    .sort((a, b) => (a.canonical.toLowerCase().startsWith(needle) ? -1 : 0) - (b.canonical.toLowerCase().startsWith(needle) ? -1 : 0) || a.canonical.localeCompare(b.canonical))
+    .slice(0, 6);
+  if (!matches.length) return null;
+  return <div role="listbox" aria-label="Medication suggestions" style={{ marginTop: 5, border: `1px solid ${LINE}`, borderRadius: 8, background: CARD, overflow: "hidden", boxShadow: "0 4px 12px rgba(22,38,42,.10)" }}>
+    {matches.map((term) => {
+      const matchedBrand = term.names.find((name) => name.toLowerCase().includes(needle) && name.toLowerCase() !== term.canonical.toLowerCase());
+      return <button key={`${term.category}-${term.canonical}`} type="button" role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(term.canonical)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", border: "none", borderBottom: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }}>
+        {term.canonical}{matchedBrand ? <span style={{ color: MUTED }}> · {matchedBrand}</span> : null}
+      </button>;
+    })}
+  </div>;
+}
+
 function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -209,9 +244,10 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
 function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
-  const add = () => {
-    if (!draft.trim()) return;
-    onChange([...items, draft.trim()]);
+  const terms = useTerminology();
+  const add = (value = draft) => {
+    if (!value.trim()) return;
+    onChange([...items, value.trim()]);
     setDraft("");
     onPendingChange(false);
   };
@@ -243,6 +279,7 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
+      <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} onSelect={add} />
       {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
     </div>
   );
@@ -251,10 +288,11 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
 function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const durationRefs = useRef([]);
-  const add = () => {
-    if (!draft.trim()) return;
+  const terms = useTerminology();
+  const add = (value = draft) => {
+    if (!value.trim()) return;
     const newIndex = items.length;
-    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
+    onChange([...items, { name: value.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
     setDraft("");
     setTimeout(() => { durationRefs.current[newIndex]?.focus(); durationRefs.current[newIndex]?.select(); }, 0);
   };
@@ -342,6 +380,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
           placeholder="e.g. Rituximab" style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
       </div>
+      <TerminologySuggestions query={draft} terms={terms} onSelect={add} />
     </div>
   );
 }
@@ -357,6 +396,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const [labsEntryPending, setLabsEntryPending] = useState(false);
   const [premedsEntryPending, setPremedsEntryPending] = useState(false);
+  const terminology = useTerminology();
   const numberRef = useRef(null);
   const regimenRef = useRef(null);
   const labsRef = useRef(null);
@@ -409,8 +449,11 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       {numberTaken ? <div style={{ fontSize: 12, marginBottom: 12, color: "#B0413E" }}>{locWord({ type })} {number} is already in use.</div> : <div style={{ marginBottom: 16 }} />}
 
       <FieldLabel>Regimen / Treatment label (optional)</FieldLabel>
-      <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Bladder, Iron"
-        style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
+      <div style={{ marginBottom: 16 }}>
+        <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Rituximab, Iron"
+          style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <TerminologySuggestions query={regimenLabel} terms={terminology} onSelect={(value) => { setRegimenLabel(value); regimenRef.current?.focus(); }} />
+      </div>
 
       <FieldLabel>Labs to be drawn today</FieldLabel>
       <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} /></div>
