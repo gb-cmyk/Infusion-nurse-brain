@@ -1,0 +1,50 @@
+{
+  "schemaVersion": "1.0.0",
+  "language": "en-US",
+  "purpose": "On-device clinical speech recognition and autocomplete seed data",
+  "overlays": [
+    {
+      "path": "oncology_infusion_terminology.json",
+      "description": "Adult outpatient oncology, premedication, supportive-care, and other infusion autocomplete terms."
+    }
+  ],
+  "entries": [
+    {"id":"dx.chf","canonical":"heart failure","display":"Heart failure (HF)","category":"diagnosis","aliases":["CHF","congestive heart failure","chronic heart failure"],"spoken":["C H F","heart failure","congestive heart failure"],"confusions":["HFrEF","HFpEF"],"confirm":false},
+    {"id":"dx.hfref","canonical":"heart failure with reduced ejection fraction","display":"Heart failure with reduced ejection fraction (HFrEF)","category":"diagnosis","aliases":["HFrEF","reduced EF heart failure"],"spoken":["H F r E F","heart failure reduced ejection fraction"],"confusions":["HFpEF"],"confirm":false},
+    {"id":"dx.hfpef","canonical":"heart failure with preserved ejection fraction","display":"Heart failure with preserved ejection fraction (HFpEF)","category":"diagnosis","aliases":["HFpEF","preserved EF heart failure"],"spoken":["H F p E F","heart failure preserved ejection fraction"],"confusions":["HFrEF"],"confirm":false},
+    {"id":"dx.htn","canonical":"hypertension","display":"Hypertension (HTN)","category":"diagnosis","aliases":["high blood pressure","HTN"],"spoken":["H T N","hypertension"],"confirm":false},
+    {"id":"dx.cad","canonical":"coronary artery disease","display":"Coronary artery disease (CAD)","category":"diagnosis","aliases":["CAD"],"spoken":["C A D","coronary artery disease"],"confirm":false},
+    {"id":"dx.afib","canonical":"atrial fibrillation","display":"Atrial fibrillation (AFib)","category":"diagnosis","aliases":["AF","AFib","A-fib"],"spoken":["A fib","atrial fibrillation"],"confirm":false},
+    {"id":"dx.copd","canonical":"chronic obstructive pulmonary disease","display":"Chronic obstructive pulmonary disease (COPD)","category":"diagnosis","aliases":["COPD"],"spoken":["C O P D","chronic obstructive pulmonary disease"],"confirm":false},
+    {"id":"dx.aki","canonical":"acute kidney injury","display":"Acute kidney injury (AKI)","category":"diagnosis","aliases":["AKI","acute renal failure"],"spoken":["A K I","acute kidney injury"],"confirm":false},
+    {"id":"dx.ckd","canonical":"chronic kidney disease","display":"Chronic kidney disease (CKD)","category":"diagnosis","aliases":["CKD"],"spoken":["C K D","chronic kidney disease"],"confirm":false},
+    {"id":"dx.dka","canonical":"diabetic ketoacidosis","display":"Diabetic ketoacidosis (DKA)","category":"diagnosis","aliases":["DKA"],"spoken":["D K A","diabetic ketoacidosis"],"confirm":false},
+    {"id":"dx.sepsis","canonical":"sepsis","display":"Sepsis","category":"diagnosis","aliases":["septicemia"],"spoken":["sepsis"],"confirm":false},
+    {"id":"dx.dvt","canonical":"deep vein thrombosis","display":"Deep vein thrombosis (DVT)","category":"diagnosis","aliases":["DVT"],"spoken":["D V T","deep vein thrombosis"],"confirm":false},
+    {"id":"dx.pe","canonical":"pulmonary embolism","display":"Pulmonary embolism (PE)","category":"diagnosis","aliases":["PE"],"spoken":["P E","pulmonary embolism"],"confusions":["physical examination"],"confirm":false},
+    {"id":"dx.cva","canonical":"stroke","display":"Stroke (CVA)","category":"diagnosis","aliases":["CVA","cerebrovascular accident"],"spoken":["C V A","stroke"],"confirm":false},
+    {"id":"dx.uti","canonical":"urinary tract infection","display":"Urinary tract infection (UTI)","category":"diagnosis","aliases":["UTI"],"spoken":["U T I","urinary tract infection"],"confirm":false},
+    {"id":"dx.aml","canonical":"acute myeloid leukemia","display":"Acute myeloid leukemia (AML)","category":"oncology_diagnosis","aliases":["AML"],"spoken":["A M L","acute myeloid leukemia"],"confirm":false},
+    {"id":"dx.all","canonical":"acute lymphoblastic leukemia","display":"Acute lymphoblastic leukemia (ALL)","category":"oncology_diagnosis","aliases":["ALL"],"spoken":["A L L","acute lymphoblastic leukemia"],"confirm":false},
+    {"id":"dx.nscclc","canonical":"non-small-cell lung cancer","display":"Non-small-cell lung cancer (NSCLC)","category":"oncology_diagnosis","aliases":["NSCLC"],"spoken":["N S C L C","non small cell lung cancer"],"confirm":false},
+    {"id":"dx.crc","canonical":"colorectal cancer","display":"Colorectal cancer (CRC)","category":"oncology_diagnosis","aliases":["CRC"],"spoken":["C R C","colorectal cancer"],"confirm":false},
+    {"id":"dx.tls","canonical":"tumor lysis syndrome","display":"Tumor lysis syndrome (TLS)","category":"oncology_complication","aliases":["TLS"],"spoken":["T L S","tumor lysis syndrome"],"confirm":false},
+    {"id":"dx.fn","canonical":"febrile neutropenia","display":"Febrile neutropenia","category":"oncology_complication","aliases":["FN"],"spoken":["febrile neutropenia","F N"],"confirm":false},
+    {"id":"med.norepinephrine","canonical":"norepinephrine","display":"Norepinephrine","category":"infusion","aliases":["norepi","nor epi","NE"],"spoken":["norepinephrine","norepi","nor epi"],"confusions":["epinephrine"],"confirm":true},
+    {"id":"med.epinephrine","canonical":"epinephrine","display":"Epinephrine","category":"medication","aliases":["adrenaline","epi"],"spoken":["epinephrine","epi"],"confusions":["norepinephrine"],"confirm":true},
+    {"id":"med.heparin","canonical":"heparin","display":"Heparin","category":"infusion","aliases":["heparin drip"],"spoken":["heparin","heparin drip"],"confirm":true},
+    {"id":"med.insulin","canonical":"insulin","display":"Insulin","category":"medication","aliases":["insulin drip"],"spoken":["insulin","insulin drip"],"confirm":true},
+    {"id":"med.morphine","canonical":"morphine sulfate","display":"Morphine sulfate","category":"medication","aliases":["morphine","MS"],"spoken":["morphine","morphine sulfate"],"confusions":["magnesium sulfate"],"confirm":true},
+    {"id":"med.magnesium","canonical":"magnesium sulfate","display":"Magnesium sulfate","category":"medication","aliases":["mag sulfate","MgSO4"],"spoken":["magnesium sulfate","mag sulfate"],"confusions":["morphine sulfate"],"confirm":true},
+    {"id":"med.fluorouracil","canonical":"fluorouracil","display":"Fluorouracil (5-FU)","category":"oncology_drug","aliases":["5-FU","five FU"],"spoken":["fluorouracil","five F U"],"confirm":true},
+    {"id":"med.cyclophosphamide","canonical":"cyclophosphamide","display":"Cyclophosphamide","category":"oncology_drug","aliases":["Cytoxan"],"spoken":["cyclophosphamide","Cytoxan"],"confirm":true},
+    {"id":"med.pembrolizumab","canonical":"pembrolizumab","display":"Pembrolizumab","category":"oncology_drug","aliases":["Keytruda"],"spoken":["pembrolizumab","Keytruda"],"confirm":true},
+    {"id":"route.iv","canonical":"intravenous","display":"Intravenous (IV)","category":"route","aliases":["IV","I.V."],"spoken":["I V","intravenous"],"confirm":false},
+    {"id":"route.sq","canonical":"subcutaneous","display":"Subcutaneous (subQ)","category":"route","aliases":["SQ","subQ","subcut"],"spoken":["subcutaneous","sub Q"],"confirm":false},
+    {"id":"freq.prn","canonical":"as needed","display":"As needed (PRN)","category":"frequency","aliases":["PRN"],"spoken":["as needed","P R N"],"confirm":false},
+    {"id":"freq.daily","canonical":"daily","display":"Daily","category":"frequency","aliases":["QD"],"spoken":["daily","every day"],"confirm":false},
+    {"id":"nursing.sbar","canonical":"SBAR","display":"Situation, Background, Assessment, Recommendation","category":"nursing_phrase","aliases":["SBAR"],"spoken":["S bar","situation background assessment recommendation"],"confirm":false},
+    {"id":"nursing.i_and_o","canonical":"intake and output","display":"Intake and output (I&O)","category":"nursing_phrase","aliases":["I&O","I and O"],"spoken":["intake and output","I and O"],"confirm":false},
+    {"id":"nursing.npo","canonical":"nothing by mouth","display":"Nothing by mouth (NPO)","category":"nursing_phrase","aliases":["NPO"],"spoken":["nothing by mouth","N P O"],"confirm":false}
+  ]
+}

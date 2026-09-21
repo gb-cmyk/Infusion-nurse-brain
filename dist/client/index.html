@@ -84,6 +84,7 @@ const STAGES = {
 };
 
 const GENERAL_CHECKLIST = ["Allergies reviewed", "Treatment parameters met?", "Labs released?", "All Therapy Plans Reviewed", "Required consent done (i.e. chemo, blood)?", "Treatment signed & readied by pharmacy?"];
+const chartReviewItemsFor = (patient) => patient.chartReviewItems || GENERAL_CHECKLIST;
 const DISCHARGE_CHECKLIST = [
   "Next appointment scheduled",
   "MAR reviewed \u2014 all administered meds charted",
@@ -98,19 +99,19 @@ const COMPLETE_CHECKLIST = [
   "Final Assessment charted",
   "Nursing note signed",
 ];
+const completeItemsFor = (patient) => patient.completeItems || COMPLETE_CHECKLIST;
 
+const DEFAULT_PRE_INFUSION_ITEMS = ["IV access/Port Access Documented", "Name tag", "Labeled bags", "Rate and order match chart", "Patient assessment", "Falls band and tag if needed"];
+const preInfusionEditableItemsFor = (patient) => patient.preInfusionItems || DEFAULT_PRE_INFUSION_ITEMS;
 function buildPreInfusionChecklist(patient) {
-  const items = ["Required Labs Checked"];
-  (patient.labs || []).forEach((lab) => items.push(lab));
-  (patient.premeds || []).forEach((m) => items.push(`${m} given`));
-  items.push("IV access/Port Access Documented");
-  items.push("Name tag");
-  items.push("Labeled bags");
-  items.push("Rate and order match chart");
-  items.push("Patient assessment");
-  items.push("Falls band and tag if needed");
-  return items;
+  return [
+    ...(patient.labs || []),
+    ...(patient.premeds || []).map((medication) => `${medication} given`),
+    ...preInfusionEditableItemsFor(patient),
+  ];
 }
+const preInfusionItemsFor = buildPreInfusionChecklist;
+const endOfVisitItemsFor = (patient) => patient.endOfVisitItems || DISCHARGE_CHECKLIST;
 
 function nextStageFor(patient) {
   if (patient.stage === "pre-infusion-check") return patient.premeds?.length ? "premed-wait" : "infusing";
@@ -195,6 +196,41 @@ function FieldLabel({ children }) {
   return <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 6 }}>{children}</div>;
 }
 
+function useTerminology() {
+  const [terms, setTerms] = useState([]);
+  useEffect(() => {
+    Promise.all([
+      fetch("SpeechTerminology/medical_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
+      fetch("SpeechTerminology/oncology_infusion_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
+    ]).then(([base, oncology]) => {
+      const normalized = [...(base.entries || []), ...(oncology.entries || [])].map((term) => ({
+        canonical: term.canonical,
+        category: term.category,
+        names: [term.canonical, ...(term.aliases || []), ...(term.spoken || []), ...(term.brands || [])],
+      }));
+      setTerms(normalized);
+    }).catch(() => setTerms([]));
+  }, []);
+  return terms;
+}
+
+function TerminologySuggestions({ query, terms, onSelect, premedOnly = false }) {
+  const needle = query.trim().toLowerCase();
+  if (!needle) return null;
+  const matches = terms.filter((term) => (!premedOnly || term.category === "premedication") && term.names.some((name) => name.toLowerCase().includes(needle)))
+    .sort((a, b) => (a.canonical.toLowerCase().startsWith(needle) ? -1 : 0) - (b.canonical.toLowerCase().startsWith(needle) ? -1 : 0) || a.canonical.localeCompare(b.canonical))
+    .slice(0, 6);
+  if (!matches.length) return null;
+  return <div role="listbox" aria-label="Medication suggestions" style={{ marginTop: 5, border: `1px solid ${LINE}`, borderRadius: 8, background: CARD, overflow: "hidden", boxShadow: "0 4px 12px rgba(22,38,42,.10)" }}>
+    {matches.map((term) => {
+      const matchedBrand = term.names.find((name) => name.toLowerCase().includes(needle) && name.toLowerCase() !== term.canonical.toLowerCase());
+      return <button key={`${term.category}-${term.canonical}`} type="button" role="option" onMouseDown={(event) => event.preventDefault()} onClick={() => onSelect(term.canonical)} style={{ display: "block", width: "100%", textAlign: "left", padding: "9px 11px", border: "none", borderBottom: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }}>
+        {term.canonical}{matchedBrand ? <span style={{ color: MUTED }}> · {matchedBrand}</span> : null}
+      </button>;
+    })}
+  </div>;
+}
+
 function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -209,9 +245,10 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
 function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
-  const add = () => {
-    if (!draft.trim()) return;
-    onChange([...items, draft.trim()]);
+  const terms = useTerminology();
+  const add = (value = draft) => {
+    if (!value.trim()) return;
+    onChange([...items, value.trim()]);
     setDraft("");
     onPendingChange(false);
   };
@@ -243,6 +280,7 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
+      <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} onSelect={add} />
       {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
     </div>
   );
@@ -251,10 +289,11 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
 function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const durationRefs = useRef([]);
-  const add = () => {
-    if (!draft.trim()) return;
+  const terms = useTerminology();
+  const add = (value = draft) => {
+    if (!value.trim()) return;
     const newIndex = items.length;
-    onChange([...items, { name: draft.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
+    onChange([...items, { name: value.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsMin: 30 }]);
     setDraft("");
     setTimeout(() => { durationRefs.current[newIndex]?.focus(); durationRefs.current[newIndex]?.select(); }, 0);
   };
@@ -342,6 +381,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
           placeholder="e.g. Rituximab" style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
       </div>
+      <TerminologySuggestions query={draft} terms={terms} onSelect={add} />
     </div>
   );
 }
@@ -357,6 +397,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const [labsEntryPending, setLabsEntryPending] = useState(false);
   const [premedsEntryPending, setPremedsEntryPending] = useState(false);
+  const terminology = useTerminology();
   const numberRef = useRef(null);
   const regimenRef = useRef(null);
   const labsRef = useRef(null);
@@ -409,8 +450,11 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       {numberTaken ? <div style={{ fontSize: 12, marginBottom: 12, color: "#B0413E" }}>{locWord({ type })} {number} is already in use.</div> : <div style={{ marginBottom: 16 }} />}
 
       <FieldLabel>Regimen / Treatment label (optional)</FieldLabel>
-      <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Bladder, Iron"
-        style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none", marginBottom: 16 }} />
+      <div style={{ marginBottom: 16 }}>
+        <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Rituximab, Iron"
+          style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <TerminologySuggestions query={regimenLabel} terms={terminology} onSelect={(value) => { setRegimenLabel(value); regimenRef.current?.focus(); }} />
+      </div>
 
       <FieldLabel>Labs to be drawn today</FieldLabel>
       <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} /></div>
@@ -609,36 +653,76 @@ function ChecklistGate({ items, checked, onToggle, onSelectAll }) {
   );
 }
 
-function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onStartPremedTimer }) {
+function EditableChecklist({ title, description, items, checked, onToggle, onSelectAll, onChange }) {
+  const [draft, setDraft] = useState("");
+  const [editing, setEditing] = useState(false);
+  const update = (index, value) => onChange(items.map((item, itemIndex) => itemIndex === index ? value : item));
+  const remove = (index) => onChange(items.filter((_, itemIndex) => itemIndex !== index));
+  const add = () => { if (!draft.trim()) return; onChange([...items, draft.trim()]); setDraft(""); };
+  return <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
+      <IconShield size={14} color="#6E5AA3" />
+      <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>{title}</span>
+      <button type="button" onClick={() => setEditing((value) => !value)} style={{ padding: "4px 7px", borderRadius: 6, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11, fontWeight: 600 }}>{editing ? "Done" : "Edit checklist"}</button>
+    </div>
+    {editing && <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>{description}</div>}
+    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+      {items.map((item, index) => <div key={index} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <input type="checkbox" checked={!!checked[index]} onChange={() => onToggle(index)} aria-label={`Complete ${item || "checklist item"}`} style={{ width: 20, height: 20, flexShrink: 0 }} />
+        {editing ? <input value={item} onChange={(event) => update(index, event.target.value)} aria-label={`${title} item ${index + 1}`} style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} /> : <span style={{ flex: 1, fontSize: 15, lineHeight: 1.4, color: INK }}>{item}</span>}
+        {editing && <button type="button" onClick={() => remove(index)} aria-label={`Delete ${item || "checklist item"}`} style={{ width: 34, height: 34, border: "none", background: "none", color: "#B0413E" }}><IconX size={17} /></button>}
+      </div>)}
+    </div>
+    {editing && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+      <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} placeholder="Add checklist item" aria-label={`New ${title} item`} style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} />
+      <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${ACCENT}`, background: CARD, color: ACCENT, fontWeight: 600 }}>Add</button>
+    </div>}
+    <button onClick={() => onSelectAll(true)} disabled={!items.length} style={{ width: "100%", marginTop: 14, padding: "11px 0", borderRadius: 8, border: `1px solid ${SELECTED_GREEN}`, background: items.length && items.every((item, index) => item.trim() && checked[index]) ? SELECTED_GREEN : CARD, color: items.length && items.every((item, index) => item.trim() && checked[index]) ? "#FFF" : SELECTED_GREEN, fontSize: 14, fontWeight: 600 }}>Select all</button>
+  </div>;
+}
+
+function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange, onStartPremedTimer }) {
   const labs = patient.labs || [];
   const premeds = patient.premeds || [];
-  const items = buildPreInfusionChecklist(patient);
+  const editableItems = preInfusionEditableItemsFor(patient);
+  const labOffset = 0;
+  const premedOffset = labs.length;
+  const editableOffset = labs.length + premeds.length;
+  const items = [...labs, ...premeds.map((medication) => `${medication} given`), ...editableItems];
   const [timerMinutes, setTimerMinutes] = useState(patient.premedWaitMin || 30);
-  const allChecked = items.length > 0 && items.every((_, index) => checked[index]);
-  const renderChecks = (entries, offset) => entries.length ? entries.map((label, index) => (
-    <label key={`${offset}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 12, fontSize: 15, lineHeight: 1.4, color: INK, cursor: "pointer" }}>
-      <input type="checkbox" checked={!!checked[offset + index]} onChange={() => onToggle(offset + index)} style={{ width: 20, height: 20, marginTop: 2, flexShrink: 0 }} />
-      <span>{label}</span>
-    </label>
-  )) : <div style={{ fontSize: 13, color: MUTED }}>None specified</div>;
-  const drawnLabels = labs;
-  const premedLabels = premeds.map((med) => `${med} given`);
-  const otherOffset = 1 + labs.length + premeds.length;
-  const otherItems = items.slice(otherOffset);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const update = (index, value) => onChange(editableItems.map((item, itemIndex) => itemIndex === index ? value : item));
+  const remove = (index) => onChange(editableItems.filter((_, itemIndex) => itemIndex !== index));
+  const add = () => { if (!draft.trim()) return; onChange([...editableItems, draft.trim()]); setDraft(""); };
+  const fixedGroup = (title, entries, offset) => entries.length ? <>
+    <div style={{ marginTop: 14, marginBottom: 7, paddingLeft: 32, fontSize: 12, fontWeight: 700, color: "#6E5AA3", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</div>
+    {entries.map((entry, index) => <label key={`${title}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingLeft: 18, marginBottom: 8, fontSize: 14, lineHeight: 1.35, color: INK }}>
+      <input type="checkbox" checked={!!checked[offset + index]} onChange={() => onToggle(offset + index)} style={{ width: 20, height: 20, flexShrink: 0 }} />
+      <span>{entry}</span>
+    </label>)}
+  </> : null;
   return (
-    <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 16 }}>
-        <IconShield size={14} color="#6E5AA3" />
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>Confirm before continuing</span>
+    <>
+      <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
+          <IconShield size={14} color="#6E5AA3" />
+          <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>Pre-infusion checklist</span>
+          <button type="button" onClick={() => setEditing((value) => !value)} style={{ padding: "4px 7px", borderRadius: 6, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11, fontWeight: 600 }}>{editing ? "Done" : "Edit checklist"}</button>
+        </div>
+        {fixedGroup("Required lab draw", labs, labOffset)}
+        {fixedGroup("Required premeds", premeds.map((medication) => `${medication} given`), premedOffset)}
+        {editableItems.map((item, index) => <div key={`editable-${index}`} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
+          <input type="checkbox" checked={!!checked[editableOffset + index]} onChange={() => onToggle(editableOffset + index)} aria-label={`Complete ${item || "checklist item"}`} style={{ width: 20, height: 20, flexShrink: 0 }} />
+          {editing ? <input value={item} onChange={(event) => update(index, event.target.value)} aria-label={`Pre-infusion checklist item ${index + 1}`} style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} /> : <span style={{ flex: 1, fontSize: 15, lineHeight: 1.4, color: INK }}>{item}</span>}
+          {editing && <button type="button" onClick={() => remove(index)} aria-label={`Delete ${item || "checklist item"}`} style={{ width: 34, height: 34, border: "none", background: "none", color: "#B0413E" }}><IconX size={17} /></button>}
+        </div>)}
+        {editing && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
+          <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} placeholder="Add checklist item" aria-label="New pre-infusion checklist item" style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} />
+          <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${ACCENT}`, background: CARD, color: ACCENT, fontWeight: 600 }}>Add</button>
+        </div>}
+        <button onClick={() => onCheckAll(true)} disabled={!items.length} style={{ width: "100%", marginTop: 14, padding: "11px 0", borderRadius: 8, border: `1px solid ${SELECTED_GREEN}`, background: items.length && items.every((item, index) => item.trim() && checked[index]) ? SELECTED_GREEN : CARD, color: items.length && items.every((item, index) => item.trim() && checked[index]) ? "#FFF" : SELECTED_GREEN, fontSize: 14, fontWeight: 600 }}>Select all</button>
       </div>
-      <label style={{ display: "flex", alignItems: "center", gap: 12, fontSize: 15, fontWeight: 700, color: INK, marginBottom: 18, cursor: "pointer" }}>
-        <input type="checkbox" checked={!!checked[0]} onChange={() => onToggle(0)} style={{ width: 20, height: 20, flexShrink: 0 }} />
-        Required Labs Checked
-      </label>
-      <div style={{ fontSize: 15, fontWeight: 700, color: INK, marginBottom: 10 }}>Labs Drawn</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 18 }}>{renderChecks(drawnLabels, 1)}</div>
-      <div style={{ fontSize: 15, fontWeight: 700, color: INK, marginBottom: 10 }}>Premeds Given</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: premeds.length ? 14 : 18 }}>{renderChecks(premedLabels, 1 + labs.length)}</div>
       {premeds.length > 0 && (
         <div style={{ marginBottom: 18, padding: 12, borderRadius: 8, background: CARD, border: `1px solid ${LINE}` }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: INK, marginBottom: 10 }}>Premed timer</div>
@@ -650,12 +734,7 @@ function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onStartP
           {patient.premedTimerStarted && <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Timer running · {mmss(patient.remaining || 0)} remaining</div>}
         </div>
       )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>{renderChecks(otherItems, otherOffset)}</div>
-      <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, paddingTop: 14, borderTop: `1px solid ${LINE}`, fontSize: 14, fontWeight: 600, color: INK }}>
-        <input type="checkbox" checked={allChecked} onChange={(e) => onCheckAll(e.target.checked)} style={{ width: 20, height: 20 }} />
-        Check all
-      </label>
-    </div>
+    </>
   );
 }
 
@@ -856,13 +935,13 @@ function MedicationObservationTimers({ p }) {
   );
 }
 
-function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
+function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsChange, onPreInfusionItemsChange, onEndOfVisitItemsChange, onCompleteItemsChange, onStartPremedTimer, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const screenRef = useRef(null);
   const cfg = STAGES[p.stage];
   const incompleteTasks = (p.tasks || []).filter((task) => !task.done).length;
-  const completeReady = COMPLETE_CHECKLIST.every((_, index) => !!checked[index]) && incompleteTasks === 0;
+  const completeReady = completeItemsFor(p).every((item, index) => !item || !!checked[index]) && incompleteTasks === 0;
   const isGated = !!cfg.gate;
-  const gateItems = cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : cfg.gate === "DISCHARGE" ? DISCHARGE_CHECKLIST : [];
+  const gateItems = cfg.gate === "GENERAL" ? chartReviewItemsFor(p) : cfg.gate === "PREINFUSION" ? preInfusionItemsFor(p) : cfg.gate === "DISCHARGE" ? endOfVisitItemsFor(p) : [];
   useEffect(() => {
     screenRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [p.id, p.stage]);
@@ -905,22 +984,15 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onStartPremedTimer, 
             <IconCheck size={20} color={cfg.color} />
             <span style={{ fontSize: 15, color: INK }}>Visit complete. Save this patient to free the chair.</span>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 16 }}>
-            {COMPLETE_CHECKLIST.map((item, index) => (
-              <label key={item} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "11px 10px", borderRadius: 8, background: checked[index] ? "#EAF4EF" : "#FFF", border: `1px solid ${checked[index] ? SELECTED_GREEN : LINE}`, fontSize: 14, lineHeight: 1.35, color: INK }}>
-                <input type="checkbox" checked={!!checked[index]} onChange={() => onToggleCheck(index)} style={{ width: 20, height: 20, flexShrink: 0 }} />
-                <span>{item}</span>
-              </label>
-            ))}
-          </div>
+          <EditableChecklist title="Complete visit checklist" description="Edit items for this patient, then check each completed item before completing the visit." items={completeItemsFor(p)} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onCompleteItemsChange} />
           {incompleteTasks > 0 && <div style={{ marginTop: 12, fontSize: 13, color: "#B0413E" }}>Complete {incompleteTasks} task{incompleteTasks === 1 ? "" : "s"} in Notes before finishing this patient.</div>}
           <button onClick={onCompletePatient} disabled={!completeReady} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: completeReady ? SELECTED_GREEN : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
         </div>
       )}
 
       {p.stage === "pre-infusion-check" ? (
-        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onStartPremedTimer={onStartPremedTimer} />
-      ) : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={p.stage === "chart-review" || p.stage === "discharge-check" ? onCheckAll : null} /> : null}
+        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onChange={onPreInfusionItemsChange} onStartPremedTimer={onStartPremedTimer} />
+      ) : p.stage === "chart-review" ? <EditableChecklist title="Chart review checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onChartReviewItemsChange} /> : p.stage === "discharge-check" ? <EditableChecklist title="End-of-visit checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onEndOfVisitItemsChange} /> : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={null} /> : null}
       {p.stage === "chart-review" && (
         <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
           <div style={{ fontSize: 15, fontWeight: 500, color: INK, marginBottom: 10 }}>Port access?</div>
@@ -948,7 +1020,7 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
   const nextStage = nextStageFor(p);
   const previousStage = previousStageFor(p);
   const isGated = !!cfg.gate;
-  const gateItems = isGated ? (cfg.gate === "GENERAL" ? GENERAL_CHECKLIST : cfg.gate === "PREINFUSION" ? buildPreInfusionChecklist(p) : DISCHARGE_CHECKLIST) : [];
+  const gateItems = isGated ? (cfg.gate === "GENERAL" ? chartReviewItemsFor(p) : cfg.gate === "PREINFUSION" ? preInfusionItemsFor(p) : endOfVisitItemsFor(p)) : [];
   const allDone = gateItems.every((item, i) => !item || checked[i]) &&
     (p.stage !== "chart-review" || typeof p.portAccess === "boolean") &&
     (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || p.premedTimerStarted);
@@ -1294,11 +1366,27 @@ function App() {
     setCheckedMap((prev) => {
       const patient = patients.find((entry) => entry.id === id);
       if (!patient) return prev;
-      const items = stage === "pre-infusion-check" ? buildPreInfusionChecklist(patient) : stage === "chart-review" ? GENERAL_CHECKLIST : stage === "discharge-check" ? DISCHARGE_CHECKLIST : [];
+      const items = stage === "pre-infusion-check" ? preInfusionItemsFor(patient) : stage === "chart-review" ? chartReviewItemsFor(patient) : stage === "discharge-check" ? endOfVisitItemsFor(patient) : stage === "complete" ? completeItemsFor(patient) : [];
       const stageChecks = Object.fromEntries(items.map((_, index) => [index, value]));
       return { ...prev, [id]: { ...(prev[id] || {}), [stage]: stageChecks } };
     });
   }, [patients]);
+  const onChartReviewItemsChange = useCallback((id, items) => {
+    setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, chartReviewItems: items } : patient));
+    setCheckedMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), "chart-review": {} } }));
+  }, []);
+  const onPreInfusionItemsChange = useCallback((id, items) => {
+    setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, preInfusionItems: items } : patient));
+    setCheckedMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), "pre-infusion-check": {} } }));
+  }, []);
+  const onEndOfVisitItemsChange = useCallback((id, items) => {
+    setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, endOfVisitItems: items } : patient));
+    setCheckedMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), "discharge-check": {} } }));
+  }, []);
+  const onCompleteItemsChange = useCallback((id, items) => {
+    setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, completeItems: items } : patient));
+    setCheckedMap((prev) => ({ ...prev, [id]: { ...(prev[id] || {}), complete: {} } }));
+  }, []);
   const onStartPremedTimer = useCallback((id, minutes) => {
     const duration = Math.max(0, Number(minutes) || 0);
     setPatients((prev) => prev.map((patient) => patient.id === id ? {
@@ -1502,7 +1590,7 @@ function App() {
           <NewPatientForm key={editingPatient?.id || "new"} existing={patients} patient={editingPatient} onSave={onSavePatient} onCancel={() => { setActiveId(editingPatient?.id ?? patients[0]?.id ?? "new"); setEditingId(null); }} />
         ) : activePatient ? (
           <>
-            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
+            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onChartReviewItemsChange={(items) => onChartReviewItemsChange(activeId, items)} onPreInfusionItemsChange={(items) => onPreInfusionItemsChange(activeId, items)} onEndOfVisitItemsChange={(items) => onEndOfVisitItemsChange(activeId, items)} onCompleteItemsChange={(items) => onCompleteItemsChange(activeId, items)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
               onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onSetMedicationDuration={(index, minutes) => onSetMedicationDuration(activeId, index, minutes)} onResetMedication={(index) => onResetMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onCompleteMedicationVitals={(medicationIndex, timerIndex) => onCompleteMedicationVitals(activeId, medicationIndex, timerIndex)} />
             <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onRetreat={() => onRetreat(activeId)} onBackToNew={() => { setEditingId(activeId); setActiveId("new"); }} onGateContinue={() => onGateContinue(activeId)} />
           </>
