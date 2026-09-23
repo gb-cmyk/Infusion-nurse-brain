@@ -202,8 +202,9 @@ function useTerminology() {
     Promise.all([
       fetch("SpeechTerminology/medical_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
       fetch("SpeechTerminology/oncology_infusion_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
-    ]).then(([base, oncology]) => {
-      const normalized = [...(base.entries || []), ...(oncology.entries || [])].map((term) => ({
+      fetch("SpeechTerminology/lab_terminology.json").then((r) => r.ok ? r.json() : { entries: [] }),
+    ]).then(([base, oncology, labs]) => {
+      const normalized = [...(base.entries || []), ...(oncology.entries || []), ...(labs.entries || [])].map((term) => ({
         canonical: term.canonical,
         category: term.category,
         names: [term.canonical, ...(term.aliases || []), ...(term.spoken || []), ...(term.brands || [])],
@@ -214,10 +215,10 @@ function useTerminology() {
   return terms;
 }
 
-function TerminologySuggestions({ query, terms, onSelect, premedOnly = false }) {
+function TerminologySuggestions({ query, terms, onSelect, premedOnly = false, labOnly = false }) {
   const needle = query.trim().toLowerCase();
   if (!needle) return null;
-  const matches = terms.filter((term) => (!premedOnly || term.category === "premedication") && term.names.some((name) => name.toLowerCase().includes(needle)))
+  const matches = terms.filter((term) => (!premedOnly || term.category === "premedication") && (!labOnly || term.category === "laboratory_test") && term.names.some((name) => name.toLowerCase().includes(needle)))
     .sort((a, b) => (a.canonical.toLowerCase().startsWith(needle) ? -1 : 0) - (b.canonical.toLowerCase().startsWith(needle) ? -1 : 0) || a.canonical.localeCompare(b.canonical))
     .slice(0, 6);
   if (!matches.length) return null;
@@ -280,7 +281,7 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
-      <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} onSelect={add} />
+      <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} labOnly={entryName === "labs"} onSelect={add} />
       {draft.trim() && <div style={{ marginTop: 6, fontSize: 12, color: MUTED }}>Press Return or + to add this typed entry, or choose a suggestion.</div>}
     </div>
   );

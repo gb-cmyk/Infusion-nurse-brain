@@ -6,6 +6,10 @@
     {
       "path": "oncology_infusion_terminology.json",
       "description": "Adult outpatient oncology, premedication, supportive-care, and other infusion autocomplete terms."
+    },
+    {
+      "path": "lab_terminology.json",
+      "description": "Common laboratory tests and abbreviations for outpatient and infusion-center autocomplete."
     }
   ],
   "entries": [
