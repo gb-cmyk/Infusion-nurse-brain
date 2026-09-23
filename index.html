@@ -242,7 +242,7 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   );
 }
 
-function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange, forwardedInputRef }) {
+function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingChange = () => {}, forwardedInputRef }) {
   const [draft, setDraft] = useState("");
   const inputRef = useRef(null);
   const terms = useTerminology();
@@ -276,12 +276,12 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <input ref={(element) => { inputRef.current = element; if (forwardedInputRef) forwardedInputRef.current = element; }} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          onBlur={() => { if (draft.trim()) setTimeout(() => inputRef.current?.focus(), 0); }}
+          onBlur={() => onPendingChange(false)}
           placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${draft.trim() ? "#B0413E" : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
       <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} onSelect={add} />
-      {draft.trim() && <div role="alert" style={{ marginTop: 6, fontSize: 12, color: "#B0413E" }}>Press Return to add this entry, or delete the text to continue.</div>}
+      {draft.trim() && <div style={{ marginTop: 6, fontSize: 12, color: MUTED }}>Press Return or + to add this typed entry, or choose a suggestion.</div>}
     </div>
   );
 }
@@ -390,16 +390,12 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [initials, setInitials] = useState(patient?.initials || "");
   const [type, setType] = useState(patient?.type || "chair");
   const [number, setNumber] = useState(patient?.number ?? "");
-  const [regimenLabel, setRegimenLabel] = useState(patient?.regimenLabel || "");
   const [labs, setLabs] = useState(patient?.labs || []);
+  const [labsRequired, setLabsRequired] = useState((patient?.labs || []).length > 0);
   const [premeds, setPremeds] = useState(patient?.premeds || []);
   const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med, index, all) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, countUpOnly: false, observationMin: all.length === 1 ? patient?.observationMin || 0 : 0, vitalsSelections: patient?.vitalsSelections || [], postVitalsEnabled: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, countUpOnly: !!med.countUpOnly, observationMin: med.observationMin ?? (all.length === 1 ? patient?.observationMin || 0 : 0), vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30 }));
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
-  const [labsEntryPending, setLabsEntryPending] = useState(false);
-  const [premedsEntryPending, setPremedsEntryPending] = useState(false);
-  const terminology = useTerminology();
   const numberRef = useRef(null);
-  const regimenRef = useRef(null);
   const labsRef = useRef(null);
   const premedsRef = useRef(null);
   const medicationsRef = useRef(null);
@@ -413,22 +409,16 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
     if (!canSave) return;
     onSave({
       ...(patient || {}), id: patient?.id || Date.now(), type, number: Number(number), initials: initials.trim().toUpperCase(),
-      regimenLabel: regimenLabel.trim(), labs, premeds, todayMeds, observationMin: Math.max(0, ...todayMeds.map((med) => Number(med.observationMin) || 0)),
+      labs: labsRequired ? labs : [], premeds, todayMeds, observationMin: Math.max(0, ...todayMeds.map((med) => Number(med.observationMin) || 0)),
       premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
     });
   };
 
   return (
-    <div onFocusCapture={(event) => { const target = event.target; setTimeout(() => target?.scrollIntoView?.({ behavior: "smooth", block: "center" }), 120); }} onPointerDownCapture={(event) => {
-      const editor = event.target.closest?.("[data-entry-editor]")?.dataset.entryEditor;
-      if ((labsEntryPending && editor !== "labs") || (premedsEntryPending && editor !== "premeds")) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-    }} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 20px" }}>
+    <div onFocusCapture={(event) => { const target = event.target; setTimeout(() => target?.scrollIntoView?.({ behavior: "smooth", block: "center" }), 120); }} style={{ flex: 1, minHeight: 0, overflowY: "auto", padding: "20px 20px" }}>
       <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 16 }}>{patient ? "Edit Patient" : "New Patient"}</div>
       <FieldLabel>Initials {initials.trim() ? "" : "· required"}</FieldLabel>
-      <input autoFocus={!patient} maxLength="5" value={initials} onChange={(e) => setInitials(e.target.value.slice(0, 5))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); numberRef.current?.focus(); numberRef.current?.select(); } }} placeholder="e.g. M.R."
+      <input autoFocus={!patient} maxLength="10" value={initials} onChange={(e) => setInitials(e.target.value.slice(0, 10))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); numberRef.current?.focus(); numberRef.current?.select(); } }} placeholder="e.g. M.R."
         style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `2px solid ${initials.trim() ? LINE : "#B0413E"}`, background: initials.trim() ? CARD : "#FFF5F4", color: INK, outline: "none", marginBottom: 16 }} />
 
       <FieldLabel>Location</FieldLabel>
@@ -442,25 +432,21 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       <FieldLabel>{type === "chair" ? "Chair" : "Bed"} number {Number(number) > 0 && !numberTaken ? "" : "· required"}</FieldLabel>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 4 }}>
         <button onClick={() => setNumber(Math.max(1, (Number(number) || 1) - 1))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>-</button>
-        <input ref={numberRef} type="number" min="1" inputMode="numeric" value={number} onChange={(e) => setNumber(e.target.value === "" ? "" : Math.max(1, Number(e.target.value) || 1))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); regimenRef.current?.focus(); } }}
+        <input ref={numberRef} type="number" min="1" inputMode="numeric" value={number} onChange={(e) => setNumber(e.target.value === "" ? "" : Math.max(1, Number(e.target.value) || 1))} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }}
           aria-label={`${type === "chair" ? "Chair" : "Bed"} number`}
           style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 64, height: 40, textAlign: "center", color: INK, background: Number(number) > 0 && !numberTaken ? CARD : "#FFF5F4", border: `2px solid ${Number(number) > 0 && !numberTaken ? LINE : "#B0413E"}`, borderRadius: 8 }} />
         <button onClick={() => setNumber((Number(number) || 0) + 1)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
       </div>
       {numberTaken ? <div style={{ fontSize: 12, marginBottom: 12, color: "#B0413E" }}>{locWord({ type })} {number} is already in use.</div> : <div style={{ marginBottom: 16 }} />}
 
-      <FieldLabel>Regimen / Treatment label (optional)</FieldLabel>
-      <div style={{ marginBottom: 16 }}>
-        <input ref={regimenRef} value={regimenLabel} onChange={(e) => setRegimenLabel(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); labsRef.current?.focus(); } }} placeholder="e.g. FOLFOX, Rituximab, Iron"
-          style={{ width: "100%", fontSize: 15, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
-        <TerminologySuggestions query={regimenLabel} terms={terminology} onSelect={(value) => { setRegimenLabel(value); regimenRef.current?.focus(); }} />
+      <FieldLabel>Labs to be drawn today?</FieldLabel>
+      <div style={{ display: "flex", gap: 8, marginBottom: labsRequired ? 10 : 16 }}>
+        {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" onClick={() => { setLabsRequired(option.value); if (!option.value) setLabs([]); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 600, background: labsRequired === option.value ? ACCENT : CARD, color: labsRequired === option.value ? "#FFF" : INK, border: `1px solid ${labsRequired === option.value ? ACCENT : LINE}` }}>{option.label}</button>)}
       </div>
-
-      <FieldLabel>Labs to be drawn today</FieldLabel>
-      <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" onPendingChange={setLabsEntryPending} forwardedInputRef={labsRef} /></div>
+      {labsRequired && <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="e.g. CBC, BMP, or UA" entryName="labs" forwardedInputRef={labsRef} /></div>}
 
       <FieldLabel>Premeds, in order given</FieldLabel>
-      <div style={{ marginBottom: premeds.length > 0 ? 8 : 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" onPendingChange={setPremedsEntryPending} forwardedInputRef={premedsRef} /></div>
+      <div style={{ marginBottom: premeds.length > 0 ? 8 : 16 }}><OrderedListEditor items={premeds} onChange={setPremeds} placeholder="e.g. Diphenhydramine" entryName="premeds" forwardedInputRef={premedsRef} /></div>
 
       {premeds.length > 0 && (<>
         <FieldLabel>Premed wait time before infusing</FieldLabel>
@@ -543,7 +529,6 @@ function CompletedLibrary({ patients, onDelete, onDeleteAll, onClose }) {
                 {expanded ? <IconUp size={18} color={MUTED} /> : <IconDown size={18} color={MUTED} />}
               </button>
               {expanded && <>
-              {patient.regimenLabel && <div style={{ marginTop: 10, fontSize: 13, fontWeight: 600, color: INK }}>{patient.regimenLabel}</div>}
               <div style={{ marginTop: 12, padding: 12, borderRadius: 8, background: "#F4F6F5", border: `1px solid ${LINE}` }}>
                 <div style={{ fontSize: 12, fontWeight: 700, color: INK, marginBottom: 7 }}>Timer &amp; duration summary</div>
                 <div style={{ fontSize: 12, lineHeight: 1.6, color: MUTED }}>
@@ -956,8 +941,6 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsCh
         <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", padding: "4px 10px", borderRadius: 999, color: cfg.color, background: `${cfg.color}1A` }}>{cfg.label}</span>
       </div>
 
-      {p.regimenLabel && <div style={{ fontSize: 14, marginTop: 4, color: MUTED }}>{p.regimenLabel}</div>}
-
       {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onSetMedicationDuration={onSetMedicationDuration} onResetMedication={onResetMedication} onCompleteMedication={onCompleteMedication} onCompleteMedicationVitals={onCompleteMedicationVitals} />}
       {p.stage === "infusing" && <CustomCountdown timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
       {p.stage === "observation" && <MedicationObservationTimers p={p} />}
@@ -1114,7 +1097,7 @@ function loadPatients() {
     });
   } catch (e) {}
   return [
-    { id: 1, type: "chair", number: 1, initials: "J.A.", regimenLabel: "", labs: [], premeds: [], todayMeds: [], vitalsSelections: [], vitalsIntervalMin: 0, observationMin: 0, premedWaitMin: 0, stage: "chart-review", notes: [] },
+    { id: 1, type: "chair", number: 1, initials: "J.A.", labs: [], premeds: [], todayMeds: [], vitalsSelections: [], vitalsIntervalMin: 0, observationMin: 0, premedWaitMin: 0, stage: "chart-review", notes: [] },
   ];
 }
 

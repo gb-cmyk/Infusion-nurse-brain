@@ -156,6 +156,21 @@
     {"canonical":"dexrazoxane","brands":["Zinecard"],"category":"supportive_infusion"},
     {"canonical":"amifostine","brands":["Ethyol"],"category":"supportive_infusion"},
     {"canonical":"romiplostim","brands":["Nplate"],"category":"supportive_injection"},
-    {"canonical":"luspatercept","brands":["Reblozyl"],"category":"supportive_injection"}
+    {"canonical":"luspatercept","brands":["Reblozyl"],"category":"supportive_injection"},
+    {"canonical":"hydration","brands":[],"category":"hydration_infusion"},
+    {"canonical":"normal saline bolus 1 L","brands":["0.9% sodium chloride 1 L"],"category":"hydration_infusion"},
+    {"canonical":"normal saline bolus 500 mL","brands":["0.9% sodium chloride 500 mL"],"category":"hydration_infusion"},
+    {"canonical":"normal saline bolus 2 L","brands":["0.9% sodium chloride 2 L"],"category":"hydration_infusion"},
+    {"canonical":"lactated Ringer's 1 L","brands":["LR 1 L"],"category":"hydration_infusion"},
+    {"canonical":"potassium chloride","brands":["KCl"],"category":"electrolyte_infusion"},
+    {"canonical":"magnesium sulfate","brands":["mag sulfate","MgSO4"],"category":"electrolyte_infusion"},
+    {"canonical":"calcium gluconate","brands":[],"category":"electrolyte_infusion"},
+    {"canonical":"calcium chloride","brands":[],"category":"electrolyte_infusion"},
+    {"canonical":"sodium phosphate","brands":[],"category":"electrolyte_infusion"},
+    {"canonical":"potassium phosphate","brands":["KPhos"],"category":"electrolyte_infusion"},
+    {"canonical":"sodium bicarbonate","brands":[],"category":"electrolyte_infusion"},
+    {"canonical":"sodium chloride 3%","brands":["hypertonic saline"],"category":"electrolyte_infusion"},
+    {"canonical":"dextrose 5% in water","brands":["D5W"],"category":"hydration_infusion"},
+    {"canonical":"dextrose 5% in 0.45% sodium chloride","brands":["D5 half normal saline","D5 1/2 NS"],"category":"hydration_infusion"}
   ]
 }
