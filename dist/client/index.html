@@ -312,6 +312,8 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const setObservation = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, observationMin: Math.max(0, Number(value) || 0) } : med));
   const setPostVitalsEnabled = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: !med.postVitalsEnabled, postVitalsMin: Number(med.postVitalsMin) > 0 ? Number(med.postVitalsMin) : 30 } : med));
   const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
+  const toggleVitalsOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, vitalsTimingOpen: !med.vitalsTimingOpen } : med));
+  const toggleObservationOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, observationOpen: !med.observationOpen } : med));
   const toggleVitals = (i, value) => onChange(items.map((med, idx) => {
     if (idx !== i) return med;
     const selections = med.vitalsSelections || [];
@@ -344,23 +346,23 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                 <button onClick={() => toggleCountUpOnly(i)} aria-pressed={!!med.countUpOnly} style={{ width: "100%", marginTop: 8, padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.countUpOnly ? SELECTED_GREEN : LINE}`, background: med.countUpOnly ? SELECTED_GREEN : CARD, color: med.countUpOnly ? "#FFF" : INK, fontSize: 12, fontWeight: 600 }}>Count up timer only (e.g. IVIG, Ocrevus)</button>
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Vitals During?</div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5 }}>
+                <button onClick={() => toggleVitalsOpen(i)} aria-expanded={!!med.vitalsTimingOpen} style={{ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.vitalsTimingOpen || (med.vitalsSelections || []).length ? SELECTED_GREEN : LINE}`, background: med.vitalsTimingOpen || (med.vitalsSelections || []).length ? SELECTED_GREEN : CARD, color: med.vitalsTimingOpen || (med.vitalsSelections || []).length ? "#FFF" : INK, fontSize: 12, fontWeight: 600, textAlign: "left" }}>Vitals During?{(med.vitalsSelections || []).length ? ` · ${(med.vitalsSelections || []).map((value) => ({ "15": "15 min", "30": "30 min", end: "End", every30: "Every 30" }[value])).join(", ")}` : ""}</button>
+                {med.vitalsTimingOpen && <div style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: 5, marginTop: 8 }}>
                   {[{ label: "15", value: "15" }, { label: "30", value: "30" }, { label: "End", value: "end" }, { label: "Every 30", value: "every30" }].map((option) => {
                     const selected = (med.vitalsSelections || []).includes(option.value);
                     return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? SELECTED_GREEN : LINE}`, background: selected ? SELECTED_GREEN : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
                   })}
-                </div>
+                </div>}
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: INK, marginBottom: 6 }}>Observation period after this medication</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button onClick={() => toggleObservationOpen(i)} aria-expanded={!!med.observationOpen} style={{ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.observationOpen || Number(med.observationMin) > 0 ? SELECTED_GREEN : LINE}`, background: med.observationOpen || Number(med.observationMin) > 0 ? SELECTED_GREEN : CARD, color: med.observationOpen || Number(med.observationMin) > 0 ? "#FFF" : INK, fontSize: 12, fontWeight: 600, textAlign: "left" }}>Observation period after this medication{Number(med.observationMin) > 0 ? ` · ${med.observationMin} min` : ""}</button>
+                {med.observationOpen && <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
                   <button onClick={() => setObservation(i, Number(med.observationMin || 0) - 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>-</button>
                   <input type="number" min="0" inputMode="numeric" value={med.observationMin || 0} onChange={(e) => setObservation(i, e.target.value)} aria-label={`${med.name} observation duration in minutes`} style={{ width: 64, height: 36, borderRadius: 7, border: `1px solid ${Number(med.observationMin) > 0 ? SELECTED_GREEN : LINE}`, background: Number(med.observationMin) > 0 ? SELECTED_GREEN : CARD, color: Number(med.observationMin) > 0 ? "#FFF" : INK, textAlign: "center", fontFamily: "'IBM Plex Mono', monospace", fontSize: 14 }} />
                   <button onClick={() => setObservation(i, Number(med.observationMin || 0) + 5)} style={{ width: 36, height: 36, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>+</button>
                   <button onClick={() => setObservation(i, 30)} style={{ padding: "9px 8px", borderRadius: 7, border: `1px solid ${Number(med.observationMin) === 30 ? SELECTED_GREEN : LINE}`, background: Number(med.observationMin) === 30 ? SELECTED_GREEN : CARD, color: Number(med.observationMin) === 30 ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>30 min</button>
                   <button onClick={() => setObservation(i, 0)} style={{ padding: "9px 7px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11 }}>Clear</button>
-                </div>
+                </div>}
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
                 <button onClick={() => setPostVitalsEnabled(i)} style={{ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.postVitalsEnabled ? SELECTED_GREEN : LINE}`, background: med.postVitalsEnabled ? SELECTED_GREEN : CARD, color: med.postVitalsEnabled ? "#FFF" : INK, fontSize: 12, fontWeight: 600 }}>Post Infusion VS?</button>
