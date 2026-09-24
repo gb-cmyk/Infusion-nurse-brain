@@ -171,6 +171,24 @@
     {"canonical":"sodium bicarbonate","brands":[],"category":"electrolyte_infusion"},
     {"canonical":"sodium chloride 3%","brands":["hypertonic saline"],"category":"electrolyte_infusion"},
     {"canonical":"dextrose 5% in water","brands":["D5W"],"category":"hydration_infusion"},
-    {"canonical":"dextrose 5% in 0.45% sodium chloride","brands":["D5 half normal saline","D5 1/2 NS"],"category":"hydration_infusion"}
+    {"canonical":"dextrose 5% in 0.45% sodium chloride","brands":["D5 half normal saline","D5 1/2 NS"],"category":"hydration_infusion"},
+    {"canonical":"cyanocobalamin","brands":["vitamin B12","B12 injection"],"category":"common_injection"},
+    {"canonical":"octreotide","brands":["Sandostatin"],"category":"common_injection"},
+    {"canonical":"lanreotide","brands":["Somatuline Depot"],"category":"common_injection"},
+    {"canonical":"leuprolide","brands":["Lupron Depot","Eligard"],"category":"common_injection"},
+    {"canonical":"goserelin","brands":["Zoladex"],"category":"common_injection"},
+    {"canonical":"fulvestrant","brands":["Faslodex"],"category":"common_injection"},
+    {"canonical":"daratumumab and hyaluronidase","brands":["Darzalex Faspro"],"category":"common_injection"},
+    {"canonical":"trastuzumab and hyaluronidase","brands":["Herceptin Hylecta"],"category":"common_injection"},
+    {"canonical":"pertuzumab, trastuzumab, and hyaluronidase","brands":["Phesgo"],"category":"common_injection"},
+    {"canonical":"rituximab and hyaluronidase","brands":["Rituxan Hycela"],"category":"common_injection"},
+    {"canonical":"epoetin alfa-epbx","brands":["Retacrit"],"category":"common_injection"},
+    {"canonical":"medroxyprogesterone acetate","brands":["Depo-Provera"],"category":"common_injection"},
+    {"canonical":"omalizumab","brands":["Xolair"],"category":"common_injection"},
+    {"canonical":"mepolizumab","brands":["Nucala"],"category":"common_injection"},
+    {"canonical":"dupilumab","brands":["Dupixent"],"category":"common_injection"},
+    {"canonical":"ustekinumab","brands":["Stelara"],"category":"common_injection"},
+    {"canonical":"degarelix","brands":["Firmagon"],"category":"common_injection"},
+    {"canonical":"triptorelin","brands":["Trelstar"],"category":"common_injection"}
   ]
 }
