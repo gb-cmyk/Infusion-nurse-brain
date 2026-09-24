@@ -379,11 +379,10 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
       )}
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <input ref={forwardedInputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder="Type any medication or infusion" style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
-        <button onClick={add} style={{ height: 42, padding: "0 14px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 13, fontWeight: 600 }}>Add as typed</button>
+          placeholder="e.g. Rituximab" style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${LINE}`, color: INK, outline: "none" }} />
+        <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
       </div>
       <TerminologySuggestions query={draft} terms={terms} onSelect={add} />
-      {draft.trim() && <div style={{ marginTop: 6, fontSize: 12, color: MUTED }}>Suggestions are optional. “Add as typed” keeps your exact entry.</div>}
     </div>
   );
 }
