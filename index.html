@@ -768,7 +768,8 @@ function NotesSection({ notes, tasks, onAdd, onAddTask, onToggleTask }) {
     setTimeout(() => taskInputRef.current?.focus(), 0);
   };
   return (
-    <div style={{ marginTop: 20 }}>
+    <div style={{ marginTop: 20, padding: 14, borderRadius: 10, background: "#EEF5FA", border: "1px solid #C7DCEB" }}>
+      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.05em", color: "#3A6785", marginBottom: 12 }}>Notes &amp; Tasks</div>
       <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.05em", color: MUTED, marginBottom: 8 }}>Notes</div>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => e.key === "Enter" && submit()} placeholder="Add a note..."
