@@ -139,6 +139,11 @@ function buildVitalsTimers(selections, startMs = Date.now()) {
     if (selection === "15") return { key: "15", label: "Vitals at 15 min", dueAt: startMs + 15 * 60000, remaining: 15, recurring: false };
     if (selection === "30") return { key: "30", label: "Vitals at 30 min", dueAt: startMs + 30 * 60000, remaining: 30, recurring: false };
     if (selection === "every30") return { key: "every30", label: "Vitals every 30 min", dueAt: startMs + 30 * 60000, remaining: 30, recurring: true };
+    const custom = /^custom:(\d+)$/.exec(selection);
+    if (custom) {
+      const minutes = Number(custom[1]);
+      return { key: `custom-${minutes}`, label: `Vitals at ${minutes} min`, dueAt: startMs + minutes * 60000, remaining: minutes, recurring: false };
+    }
     return { key: "end", label: "Vitals at end", dueAt: null, remaining: null, recurring: false };
   });
 }
@@ -298,7 +303,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const add = (value = draft) => {
     if (!value.trim()) return;
     const newIndex = items.length;
-    onChange([...items, { name: value.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], postVitalsEnabled: false, postVitalsOpen: false, postVitalsMin: 30 }]);
+    onChange([...items, { name: value.trim(), filterRequired: false, durationMin: 0, countUpOnly: false, observationMin: 0, vitalsSelections: [], vitalsCustomMin: 45, postVitalsEnabled: false, postVitalsAtEnd: false, postVitalsOpen: false, postVitalsMin: 30 }]);
     setDraft("");
     setTimeout(() => { durationRefs.current[newIndex]?.focus(); durationRefs.current[newIndex]?.select(); }, 0);
   };
@@ -315,10 +320,22 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const toggleCountUpOnly = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, countUpOnly: !med.countUpOnly, durationMin: 0 } : med));
   const setObservation = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, observationMin: Math.max(1, Number(value) || 1), observationOpen: false } : med));
   const togglePostVitalsOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsOpen: !med.postVitalsOpen } : med));
-  const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsOpen: false, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
+  const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsAtEnd: false, postVitalsOpen: false, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
+  const setPostVitalsEnd = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsAtEnd: true, postVitalsOpen: false } : med));
   const toggleVitalsOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, vitalsTimingOpen: !med.vitalsTimingOpen } : med));
   const toggleObservationOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, observationOpen: !med.observationOpen } : med));
-  const selectVitals = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, vitalsSelections: [value], vitalsTimingOpen: false } : med));
+  const toggleVitals = (i, value) => onChange(items.map((med, idx) => {
+    if (idx !== i) return med;
+    const selections = med.vitalsSelections || [];
+    return { ...med, vitalsSelections: selections.includes(value) ? selections.filter((entry) => entry !== value) : [...selections, value] };
+  }));
+  const adjustVitalsCustom = (i, delta) => onChange(items.map((med, idx) => {
+    if (idx !== i) return med;
+    const previous = Number(med.vitalsCustomMin || 45);
+    const minutes = Math.max(1, previous + delta);
+    const selections = (med.vitalsSelections || []).filter((entry) => !String(entry).startsWith("custom:"));
+    return { ...med, vitalsCustomMin: minutes, vitalsSelections: [...selections, `custom:${minutes}`] };
+  }));
   const timingButtonStyle = (open, selected) => ({ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${open || selected ? SELECTED_GREEN : LINE}`, background: open || selected ? SELECTED_GREEN : CARD, color: open || selected ? "#FFF" : INK, fontSize: 12, fontWeight: 600, textAlign: "left" });
   const timingMenuStyle = { display: "flex", alignItems: "center", gap: 7, marginTop: 8, padding: 8, borderRadius: 8, background: "#EFF7F1", border: `1px solid ${SELECTED_GREEN}` };
   return (
@@ -356,19 +373,28 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                   <button onClick={() => setObservation(i, 60)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>60 min</button>
                 </div>}
               </div>
+              <div style={{ marginTop: 16, marginLeft: 19, fontSize: 12, fontWeight: 700, color: INK, textTransform: "uppercase", letterSpacing: "0.04em" }}>Make vital signs timer?</div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
-                <button onClick={() => toggleVitalsOpen(i)} aria-expanded={!!med.vitalsTimingOpen} style={timingButtonStyle(!!med.vitalsTimingOpen, (med.vitalsSelections || []).length > 0)}>Vitals during?{(med.vitalsSelections || []).length ? ` · ${(med.vitalsSelections || []).map((value) => ({ "15": "15 min", "30": "30 min", end: "End", every30: "Every 30" }[value])).join(", ")}` : ""}</button>
+                <button onClick={() => toggleVitalsOpen(i)} aria-expanded={!!med.vitalsTimingOpen} style={timingButtonStyle(!!med.vitalsTimingOpen, (med.vitalsSelections || []).length > 0)}>Vitals during{(med.vitalsSelections || []).length ? ` · ${(med.vitalsSelections || []).map((value) => value === "15" ? "15 min" : value === "30" ? "30 min" : value === "every30" ? "Every 30" : value.startsWith("custom:") ? `${value.split(":")[1]} min` : value).join(", ")}` : ""}</button>
                 {med.vitalsTimingOpen && <div style={{ ...timingMenuStyle, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-                  {[{ label: "15 min", value: "15" }, { label: "30 min", value: "30" }, { label: "End", value: "end" }, { label: "Every 30", value: "every30" }].map((option) => <button key={option.value} onClick={() => selectVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>)}
+                  {[{ label: "15 min", value: "15" }, { label: "30 min", value: "30" }, { label: "Every 30", value: "every30" }].map((option) => {
+                    const selected = (med.vitalsSelections || []).includes(option.value);
+                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? SELECTED_GREEN : LINE}`, background: selected ? SELECTED_GREEN : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
+                  })}
+                  <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 7, marginTop: 2 }}>
+                    <button onClick={() => adjustVitalsCustom(i, -5)} style={{ width: 36, height: 32, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>−</button>
+                    <button onClick={() => toggleVitals(i, `custom:${med.vitalsCustomMin || 45}`)} style={{ flex: 1, padding: "7px 3px", borderRadius: 7, border: `1px solid ${(med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? SELECTED_GREEN : LINE}`, background: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? SELECTED_GREEN : CARD, color: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>Custom · {med.vitalsCustomMin || 45} min</button>
+                    <button onClick={() => adjustVitalsCustom(i, 5)} style={{ width: 36, height: 32, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>+</button>
+                  </div>
                 </div>}
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
-                <button onClick={() => togglePostVitalsOpen(i)} aria-expanded={!!med.postVitalsOpen} style={timingButtonStyle(!!med.postVitalsOpen, !!med.postVitalsEnabled)}>Post infusion vitals?{med.postVitalsEnabled ? ` · ${med.postVitalsMin || 30} min` : ""}</button>
+                <button onClick={() => togglePostVitalsOpen(i)} aria-expanded={!!med.postVitalsOpen} style={timingButtonStyle(!!med.postVitalsOpen, !!med.postVitalsEnabled)}>Post infusion vitals{med.postVitalsEnabled ? med.postVitalsAtEnd ? " · End" : ` · ${med.postVitalsMin || 30} min` : ""}</button>
                 {med.postVitalsOpen && <div style={{ ...timingMenuStyle, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
-                  <button onClick={() => setPostVitalsMin(i, Math.max(1, Number(med.postVitalsMin || 30) - 5))} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>− 5</button>
-                  <button onClick={() => setPostVitalsMin(i, 30)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>30 min</button>
-                  <button onClick={() => setPostVitalsMin(i, Number(med.postVitalsMin || 30) + 5)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>+ 5</button>
-                  <button onClick={() => setPostVitalsMin(i, 60)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>60 min</button>
+                  <button onClick={() => setPostVitalsEnd(i)} style={{ gridColumn: "1 / -1", padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>End</button>
+                  <button onClick={() => setPostVitalsMin(i, Math.max(1, Number(med.postVitalsMin || 30) - 5))} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>−</button>
+                  <span style={{ gridColumn: "2 / span 2", textAlign: "center", padding: "7px 3px", borderRadius: 7, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>{med.postVitalsMin || 30} min</span>
+                  <button onClick={() => setPostVitalsMin(i, Number(med.postVitalsMin || 30) + 5)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 11, fontWeight: 600 }}>+</button>
                 </div>}
               </div>
             </div>
@@ -392,7 +418,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const [labs, setLabs] = useState(patient?.labs || []);
   const [labsRequired, setLabsRequired] = useState((patient?.labs || []).length > 0);
   const [premeds, setPremeds] = useState(patient?.premeds || []);
-  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med, index, all) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, countUpOnly: false, observationMin: all.length === 1 ? patient?.observationMin || 0 : 0, vitalsSelections: patient?.vitalsSelections || [], postVitalsEnabled: false, postVitalsOpen: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, countUpOnly: !!med.countUpOnly, observationMin: med.observationMin ?? (all.length === 1 ? patient?.observationMin || 0 : 0), vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsOpen: !!med.postVitalsOpen, postVitalsMin: med.postVitalsMin || 30 }));
+  const [todayMeds, setTodayMeds] = useState((patient?.todayMeds || []).map((med, index, all) => typeof med === "string" ? { name: med, filterRequired: patient?.filterRequired || false, durationMin: 0, countUpOnly: false, observationMin: all.length === 1 ? patient?.observationMin || 0 : 0, vitalsSelections: patient?.vitalsSelections || [], vitalsCustomMin: 45, postVitalsEnabled: false, postVitalsAtEnd: false, postVitalsOpen: false, postVitalsMin: 30 } : { ...med, durationMin: med.durationMin || 0, countUpOnly: !!med.countUpOnly, observationMin: med.observationMin ?? (all.length === 1 ? patient?.observationMin || 0 : 0), vitalsSelections: med.vitalsSelections || [], vitalsCustomMin: med.vitalsCustomMin || 45, postVitalsEnabled: !!med.postVitalsEnabled, postVitalsAtEnd: !!med.postVitalsAtEnd, postVitalsOpen: !!med.postVitalsOpen, postVitalsMin: med.postVitalsMin || 30 }));
   const [premedWaitMin, setPremedWaitMin] = useState(patient?.premedWaitMin ?? 30);
   const numberRef = useRef(null);
   const labsRef = useRef(null);
@@ -549,7 +575,7 @@ function CompletedLibrary({ patients, onDelete, onDeleteAll, onClose }) {
                           <div>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : run.countUpOnly ? "Count up timer only" : "Not specified"}</div>
                           <div>Actual timer: {Number(run.elapsedSeconds) > 0 ? mmss(Number(run.elapsedSeconds) / 60) : "Not recorded"}{run.startedAt ? ` · Started ${run.startedAt}` : ""}{run.completedAt ? ` · Completed ${run.completedAt}` : ""}</div>
                           <div>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map(vitalsLabel).join(", ") : "None"}</div>
-                          <div>Post Infusion VS: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "None"}</div>
+                          <div>Post Infusion VS: {run.postVitalsEnabled ? run.postVitalsAtEnd ? "At end" : `${run.postVitalsMin || 30} min after medication` : "None"}</div>
                           <div>Observation after medication: {Number(run.observationMin) > 0 ? `${run.observationMin} min` : "None"}</div>
                           {run.observationTimer && <div>Observation timer: {run.observationTimer.remaining === 0 ? "Completed" : `${mmss(run.observationTimer.remaining || 0)} remaining`}</div>}
                           {(run.vitalsTimers || []).length > 0 && <div>Vitals timers: {run.vitalsTimers.map((timer) => `${timer.label}${timer.completedAt ? ` completed ${timer.completedAt}` : " not completed"}`).join("; ")}</div>}
@@ -873,8 +899,8 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onSet
             )}
             <button onClick={() => onToggleMedicationCheck(index, "scanComplete", !run.scanComplete)} disabled={run.status !== "pending"} aria-pressed={!!run.scanComplete} style={{ width: "100%", marginBottom: 10, padding: "10px 0", borderRadius: 8, border: `1px solid ${run.scanComplete ? SELECTED_GREEN : LINE}`, background: run.scanComplete ? SELECTED_GREEN : CARD, color: run.scanComplete ? "#FFF" : INK, fontSize: 13, fontWeight: 600 }}>{run.scanComplete ? "Scan complete" : "Scan complete?"}</button>
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : run.countUpOnly ? "count up timer only" : "not specified"}</div>
-            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
-            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Post Infusion VS: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value.startsWith("custom:") ? `${value.split(":")[1]} min` : `${value} min`).join(", ") : "none specified"}</div>
+            <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Post Infusion VS: {run.postVitalsEnabled ? run.postVitalsAtEnd ? "at end" : `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Observation after medication: {Number(run.observationMin) > 0 ? `${run.observationMin} min` : "none specified"}</div>
             <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginTop: 14 }}>
               <IconClock size={16} color={MUTED} />
@@ -1078,12 +1104,12 @@ function loadPatients() {
       }
       if (patient.stage === "infusing" && !patient.medicationRuns) {
         const medications = (patient.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
+        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], vitalsCustomMin: med.vitalsCustomMin || 45, postVitalsEnabled: !!med.postVitalsEnabled, postVitalsAtEnd: !!med.postVitalsAtEnd, postVitalsMin: med.postVitalsMin || 30, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
         patient.currentMedicationIndex = 0;
       }
       if (patient.medicationRuns) patient.medicationRuns = patient.medicationRuns.map((run, index) => {
         const medication = typeof patient.todayMeds?.[index] === "string" ? {} : patient.todayMeds?.[index] || {};
-        let updated = { ...medication, ...run, durationMin: run.durationMin ?? medication.durationMin ?? 0, vitalsSelections: run.vitalsSelections || medication.vitalsSelections || [], postVitalsEnabled: run.postVitalsEnabled ?? medication.postVitalsEnabled ?? false, postVitalsMin: run.postVitalsMin ?? medication.postVitalsMin ?? 30 };
+        let updated = { ...medication, ...run, durationMin: run.durationMin ?? medication.durationMin ?? 0, vitalsSelections: run.vitalsSelections || medication.vitalsSelections || [], vitalsCustomMin: run.vitalsCustomMin ?? medication.vitalsCustomMin ?? 45, postVitalsEnabled: run.postVitalsEnabled ?? medication.postVitalsEnabled ?? false, postVitalsAtEnd: run.postVitalsAtEnd ?? medication.postVitalsAtEnd ?? false, postVitalsMin: run.postVitalsMin ?? medication.postVitalsMin ?? 30 };
         if (updated.status === "running" && !updated.startedAtMs) updated.startedAtMs = Date.now() - (updated.elapsedSeconds || 0) * 1000;
         if (updated.status === "running" && Number(updated.durationMin) > 0) {
           updated.expectedEndsAt = updated.expectedEndsAt || updated.startedAtMs + Number(updated.durationMin) * 60000;
@@ -1338,9 +1364,9 @@ function App() {
       if (next === "premed-wait") updated.premedAlert = false;
       if (next === "infusing") {
         const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && !!run.countUpOnly === !!medications[index].countUpOnly && Number(run.observationMin || 0) === Number(medications[index].observationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
+        const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && !!run.countUpOnly === !!medications[index].countUpOnly && Number(run.observationMin || 0) === Number(medications[index].observationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && Number(run.vitalsCustomMin || 45) === Number(medications[index].vitalsCustomMin || 45) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && !!run.postVitalsAtEnd === !!medications[index].postVitalsAtEnd && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
         if (!runsMatch) {
-          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
+          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], vitalsCustomMin: med.vitalsCustomMin || 45, postVitalsEnabled: !!med.postVitalsEnabled, postVitalsAtEnd: !!med.postVitalsAtEnd, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
           updated.currentMedicationIndex = 0;
         }
       }
@@ -1506,7 +1532,9 @@ function App() {
       if (i !== index || run.status !== "running") return run;
       const completedAtMs = Date.now();
       const postVitalsMin = Number(run.postVitalsMin) || 30;
-      const postTimer = run.postVitalsEnabled ? [{ key: "post", label: `Post Infusion VS at ${postVitalsMin} min`, dueAt: completedAtMs + postVitalsMin * 60000, remaining: postVitalsMin, recurring: false }] : [];
+      const postTimer = run.postVitalsEnabled ? [run.postVitalsAtEnd
+        ? { key: "post", label: "Post Infusion VS at end", dueAt: null, remaining: null, recurring: false }
+        : { key: "post", label: `Post Infusion VS at ${postVitalsMin} min`, dueAt: completedAtMs + postVitalsMin * 60000, remaining: postVitalsMin, recurring: false }] : [];
       const observationMin = Number(run.observationMin) || 0;
       const observationTimer = observationMin > 0 ? { durationMin: observationMin, dueAt: completedAtMs + observationMin * 60000, remaining: observationMin, alerted: false } : null;
       return { ...run, status: "complete", completedAt: nowTime(), completedAtMs, elapsedSeconds: run.startedAtMs ? Math.max(0, Math.floor((completedAtMs - run.startedAtMs) / 1000)) : run.elapsedSeconds || 0, vitalsTimers: [...(run.vitalsTimers || []), ...postTimer], observationTimer };

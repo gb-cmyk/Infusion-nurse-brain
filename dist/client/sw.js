@@ -1,4 +1,4 @@
-const CACHE_NAME = "chair-board-demo-v40";
+const CACHE_NAME = "chair-board-demo-v41";
 const APP_SHELL = ["./", "./index.html", "./manifest.json", "./icon-192.png", "./icon-512.png"];
 
 self.addEventListener("install", (event) => {
