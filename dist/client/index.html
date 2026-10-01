@@ -410,7 +410,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
     onSave({
       ...(patient || {}), id: patient?.id || Date.now(), type, number: Number(number), initials: initials.trim().toUpperCase(),
       labs: labsRequired ? labs : [], premeds, todayMeds, observationMin: Math.max(0, ...todayMeds.map((med) => Number(med.observationMin) || 0)),
-      premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
+      premedWaitMin: premeds.length > 0 ? premedWaitMin : 0, premedScanComplete: patient?.premedScanComplete || false, stage: patient?.stage || "chart-review", notes: patient?.notes || [],
     });
   };
 
@@ -666,7 +666,7 @@ function EditableChecklist({ title, description, items, checked, onToggle, onSel
   </div>;
 }
 
-function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange, onStartPremedTimer, onAdjustPremedTimer }) {
+function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange, onStartPremedTimer, onAdjustPremedTimer, onSetPremedScanComplete }) {
   const labs = patient.labs || [];
   const premeds = patient.premeds || [];
   const editableItems = preInfusionEditableItemsFor(patient);
@@ -713,8 +713,8 @@ function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange
           <div style={{ fontSize: 13, fontWeight: 600, color: INK, marginBottom: 10 }}>Premed timer</div>
           <Stepper value={timerMinutes} onChange={setTimerMinutes} step={5} min={0} />
           <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => setTimerMinutes(30)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${ACCENT}`, background: CARD, color: ACCENT, fontWeight: 600 }}>30 min</button>
-            <button onClick={() => onStartPremedTimer(timerMinutes)} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: ACCENT, color: "#FFF", fontWeight: 600 }}>{patient.premedTimerStarted ? "Restart premed timer" : "Start premed timer"}</button>
+            <button onClick={() => onSetPremedScanComplete(!patient.premedScanComplete)} aria-pressed={!!patient.premedScanComplete} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${patient.premedScanComplete ? SELECTED_GREEN : LINE}`, background: patient.premedScanComplete ? SELECTED_GREEN : CARD, color: patient.premedScanComplete ? "#FFF" : INK, fontWeight: 600 }}>{patient.premedScanComplete ? "Scan complete" : "Scan complete?"}</button>
+            <button onClick={() => onStartPremedTimer(timerMinutes)} disabled={!patient.premedScanComplete} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: patient.premedScanComplete ? ACCENT : "#C9DAD3", color: "#FFF", fontWeight: 600 }}>{patient.premedTimerStarted ? "Restart timer" : "Start timer"}</button>
           </div>
           {patient.premedTimerStarted && <>
             <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Timer running · {mmss(patient.remaining || 0)} remaining</div>
@@ -846,7 +846,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onSet
   return (
     <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 16 }}>
       {runs.map((run, index) => {
-        const readyToStart = run.orderConfirmed && (!run.filterRequired || run.filterReady);
+        const readyToStart = run.orderConfirmed && run.scanComplete && (!run.filterRequired || run.filterReady);
         const hasPrescribedDuration = Number(run.durationMin) > 0;
         const timerValue = run.status === "pending" && hasPrescribedDuration
           ? Number(run.durationMin)
@@ -871,6 +871,7 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onSet
                 Filter ready: {run.name}
               </label>
             )}
+            <button onClick={() => onToggleMedicationCheck(index, "scanComplete", !run.scanComplete)} disabled={run.status !== "pending"} aria-pressed={!!run.scanComplete} style={{ width: "100%", marginBottom: 10, padding: "10px 0", borderRadius: 8, border: `1px solid ${run.scanComplete ? SELECTED_GREEN : LINE}`, background: run.scanComplete ? SELECTED_GREEN : CARD, color: run.scanComplete ? "#FFF" : INK, fontSize: 13, fontWeight: 600 }}>{run.scanComplete ? "Scan complete" : "Scan complete?"}</button>
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : run.countUpOnly ? "count up timer only" : "not specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value === "end" ? "End" : `${value} min`).join(", ") : "none specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Post Infusion VS: {run.postVitalsEnabled ? `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
@@ -932,7 +933,7 @@ function MedicationObservationTimers({ p }) {
   );
 }
 
-function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsChange, onPreInfusionItemsChange, onEndOfVisitItemsChange, onCompleteItemsChange, onStartPremedTimer, onAdjustPremedTimer, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onAdjustMedicationTime, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
+function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsChange, onPreInfusionItemsChange, onEndOfVisitItemsChange, onCompleteItemsChange, onStartPremedTimer, onAdjustPremedTimer, onSetPremedScanComplete, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onAdjustMedicationTime, onResetMedication, onCompleteMedication, onCompleteMedicationVitals }) {
   const screenRef = useRef(null);
   const cfg = STAGES[p.stage];
   const incompleteTasks = (p.tasks || []).filter((task) => !task.done).length;
@@ -992,7 +993,7 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsCh
       )}
 
       {p.stage === "pre-infusion-check" ? (
-        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onChange={onPreInfusionItemsChange} onStartPremedTimer={onStartPremedTimer} onAdjustPremedTimer={onAdjustPremedTimer} />
+        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onChange={onPreInfusionItemsChange} onStartPremedTimer={onStartPremedTimer} onAdjustPremedTimer={onAdjustPremedTimer} onSetPremedScanComplete={onSetPremedScanComplete} />
       ) : p.stage === "chart-review" ? <EditableChecklist title="Chart review checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onChartReviewItemsChange} /> : p.stage === "discharge-check" ? <EditableChecklist title="End-of-visit checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onEndOfVisitItemsChange} /> : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={null} /> : null}
       {p.stage === "chart-review" && (
         <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
@@ -1024,7 +1025,7 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
   const gateItems = isGated ? (cfg.gate === "GENERAL" ? chartReviewItemsFor(p) : cfg.gate === "PREINFUSION" ? preInfusionItemsFor(p) : endOfVisitItemsFor(p)) : [];
   const allDone = gateItems.every((item, i) => !item || checked[i]) &&
     (p.stage !== "chart-review" || typeof p.portAccess === "boolean") &&
-    (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || p.premedTimerStarted);
+    (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || (p.premedScanComplete && p.premedTimerStarted));
   const allMedicationsComplete = p.stage !== "infusing" || ((p.medicationRuns || []).length > 0 && p.medicationRuns.every((run) => run.status === "complete"));
   return (
     <div style={{ display: "flex", flexShrink: 0, gap: 8, padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
@@ -1035,7 +1036,7 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
       )}
       {nextStage && (
         <button onClick={isGated ? onGateContinue : onAdvance} disabled={(isGated && !allDone) || !allMedicationsComplete} style={{ flex: 1, fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: (isGated && !allDone) || !allMedicationsComplete ? "#DCD5EA" : cfg.color, color: "#FFF", border: "none" }}>
-          {!allMedicationsComplete ? "Complete all medications to continue" : isGated ? (allDone ? "Confirmed \u2014 continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedTimerStarted ? "Start premed timer to continue" : "Check all items to continue") : `Advance to: ${STAGES[nextStage].label}`}
+          {!allMedicationsComplete ? "Complete all medications to continue" : isGated ? (allDone ? "Confirmed \u2014 continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedScanComplete ? "Confirm premed scan to continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedTimerStarted ? "Start premed timer to continue" : "Check all items to continue") : `Advance to: ${STAGES[nextStage].label}`}
         </button>
       )}
     </div>
@@ -1077,7 +1078,7 @@ function loadPatients() {
       }
       if (patient.stage === "infusing" && !patient.medicationRuns) {
         const medications = (patient.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
-        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+        patient.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
         patient.currentMedicationIndex = 0;
       }
       if (patient.medicationRuns) patient.medicationRuns = patient.medicationRuns.map((run, index) => {
@@ -1339,7 +1340,7 @@ function App() {
         const medications = (p.todayMeds || []).map((entry) => typeof entry === "string" ? { name: entry, filterRequired: false } : entry);
         const runsMatch = p.medicationRuns?.length === medications.length && p.medicationRuns.every((run, index) => run.name === medications[index].name && Number(run.durationMin || 0) === Number(medications[index].durationMin || 0) && !!run.countUpOnly === !!medications[index].countUpOnly && Number(run.observationMin || 0) === Number(medications[index].observationMin || 0) && JSON.stringify(run.vitalsSelections || []) === JSON.stringify(medications[index].vitalsSelections || []) && !!run.postVitalsEnabled === !!medications[index].postVitalsEnabled && Number(run.postVitalsMin || 30) === Number(medications[index].postVitalsMin || 30));
         if (!runsMatch) {
-          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, status: "pending", elapsedSeconds: 0 }));
+          updated.medicationRuns = medications.map((med) => ({ ...med, durationMin: med.durationMin || 0, vitalsSelections: med.vitalsSelections || [], postVitalsEnabled: !!med.postVitalsEnabled, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
           updated.currentMedicationIndex = 0;
         }
       }
@@ -1390,7 +1391,7 @@ function App() {
   }, []);
   const onStartPremedTimer = useCallback((id, minutes) => {
     const duration = Math.max(0, Number(minutes) || 0);
-    setPatients((prev) => prev.map((patient) => patient.id === id ? {
+    setPatients((prev) => prev.map((patient) => patient.id === id && patient.premedScanComplete ? {
       ...patient,
       premedWaitMin: duration,
       premedTimerStarted: true,
@@ -1409,6 +1410,9 @@ function App() {
       return { ...patient, timerEndsAt, remaining: Math.max(0, (timerEndsAt - Date.now()) / 60000), stageTimerAlerted: false, timerAlert: false, premedAlert: false };
     }));
     vibratedAlertsRef.current.delete(id);
+  }, []);
+  const onSetPremedScanComplete = useCallback((id, value) => {
+    setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, premedScanComplete: value } : patient));
   }, []);
   const onSetPortAccess = useCallback((id, value) => {
     setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, portAccess: value } : patient));
@@ -1436,7 +1440,7 @@ function App() {
     setPatients((prev) => prev.map((p) => {
       if (p.id !== id) return p;
       return { ...p, medicationRuns: p.medicationRuns.map((run, i) => {
-        if (i !== index || run.status !== "pending" || !run.orderConfirmed || (run.filterRequired && !run.filterReady)) return run;
+        if (i !== index || run.status !== "pending" || !run.orderConfirmed || !run.scanComplete || (run.filterRequired && !run.filterReady)) return run;
         const startedAtMs = Date.now();
         const durationMin = Number(run.durationMin) || 0;
         return { ...run, status: "running", startedAt: nowTime(), startedAtMs, elapsedSeconds: 0,
@@ -1610,7 +1614,7 @@ function App() {
           <NewPatientForm key={editingPatient?.id || "new"} existing={patients} patient={editingPatient} onSave={onSavePatient} onCancel={() => { setActiveId(editingPatient?.id ?? patients[0]?.id ?? "new"); setEditingId(null); }} />
         ) : activePatient ? (
           <>
-            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onChartReviewItemsChange={(items) => onChartReviewItemsChange(activeId, items)} onPreInfusionItemsChange={(items) => onPreInfusionItemsChange(activeId, items)} onEndOfVisitItemsChange={(items) => onEndOfVisitItemsChange(activeId, items)} onCompleteItemsChange={(items) => onCompleteItemsChange(activeId, items)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onAdjustPremedTimer={(delta) => onAdjustPremedTimer(activeId, delta)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
+            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onChartReviewItemsChange={(items) => onChartReviewItemsChange(activeId, items)} onPreInfusionItemsChange={(items) => onPreInfusionItemsChange(activeId, items)} onEndOfVisitItemsChange={(items) => onEndOfVisitItemsChange(activeId, items)} onCompleteItemsChange={(items) => onCompleteItemsChange(activeId, items)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onAdjustPremedTimer={(delta) => onAdjustPremedTimer(activeId, delta)} onSetPremedScanComplete={(value) => onSetPremedScanComplete(activeId, value)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
               onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onSetMedicationDuration={(index, minutes) => onSetMedicationDuration(activeId, index, minutes)} onAdjustMedicationTime={(index, delta) => onAdjustMedicationTime(activeId, index, delta)} onResetMedication={(index) => onResetMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onCompleteMedicationVitals={(medicationIndex, timerIndex) => onCompleteMedicationVitals(activeId, medicationIndex, timerIndex)} />
             <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onRetreat={() => onRetreat(activeId)} onBackToNew={() => { setEditingId(activeId); setActiveId("new"); }} onGateContinue={() => onGateContinue(activeId)} />
           </>
