@@ -103,6 +103,7 @@
     {"canonical":"pegloticase","brands":["Krystexxa"],"category":"rheumatology_infusion"},
     {"canonical":"spesolimab-sbzo","brands":["Spevigo"],"category":"dermatology_infusion"},
     {"canonical":"eptinezumab-jjmr","brands":["Vyepti"],"category":"neurology_infusion"},
+    {"canonical":"belatacept","brands":["Nulojix"],"category":"transplant_infusion"},
     {"canonical":"busulfan","brands":["Busulfex"],"category":"cytotoxic_chemotherapy"},
     {"canonical":"carmustine","brands":["BiCNU"],"category":"cytotoxic_chemotherapy"},
     {"canonical":"cladribine","brands":["Leustatin"],"category":"cytotoxic_chemotherapy"},
