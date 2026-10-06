@@ -19,7 +19,7 @@
   html, body { margin: 0; padding: 0; background: #E7E9E7; -webkit-tap-highlight-color: transparent; }
   * { box-sizing: border-box; }
   body { font-family: 'IBM Plex Sans', -apple-system, BlinkMacSystemFont, sans-serif; }
-  input[type="checkbox"] { accent-color: #6E5AA3; }
+  input[type="checkbox"] { accent-color: #24724E; }
   .tabular-nums { font-variant-numeric: tabular-nums; }
   ::-webkit-scrollbar { display: none; }
   @keyframes premed-alert-pulse {
@@ -27,8 +27,8 @@
     50% { background: #FFD978; box-shadow: inset 0 0 0 3px #C98A2C; }
   }
   @keyframes add-medication-pulse {
-    0%, 100% { border-color: #2E7D6B; box-shadow: 0 0 0 0 rgba(46,125,107,.18); }
-    50% { border-color: #1E5A4D; box-shadow: 0 0 0 5px rgba(46,125,107,.16); }
+    0%, 100% { border-color: #2D6F9E; box-shadow: 0 0 0 0 rgba(45,111,158,.18); }
+    50% { border-color: #225C8D; box-shadow: 0 0 0 5px rgba(45,111,158,.16); }
   }
 </style>
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -69,8 +69,15 @@ const PAPER = "#F4F6F4";
 const CARD = "#FFFFFF";
 const LINE = "#DDE3E0";
 const MUTED = "#5B6B6E";
-const ACCENT = "#2E7D6B";
-const SELECTED_GREEN = "#174D3C";
+const ACCENT = "#24724E";
+const SELECTED_GREEN = "#24724E";
+const NAVY = "#225C8D";
+const CONFIG_BLUE = "#2D6F9E";
+const CONFIG_SOFT = "#EAF3FB";
+const CONFIG_LINE = "#9BC4E2";
+const ATTENTION_SOFT = "#FFF4D6";
+const ATTENTION = "#B87817";
+const DISABLED = "#B8C4C1";
 const PHONE_W = 430;
 const STORAGE_KEY = "chairboard_patients_v1";
 const CHECKED_STORAGE_KEY = "chairboard_checklists_v1";
@@ -245,7 +252,7 @@ function Stepper({ value, onChange, step = 5, min = 0, highlighted = false }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
       <button onClick={() => onChange(Math.max(min, value - step))} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>-</button>
-      <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 48, height: 40, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 8, background: highlighted ? SELECTED_GREEN : CARD, border: `1px solid ${highlighted ? SELECTED_GREEN : LINE}`, color: highlighted ? "#FFF" : INK }}>{value}</span>
+      <span className="tabular-nums" style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 18, width: 48, height: 40, display: "inline-flex", alignItems: "center", justifyContent: "center", borderRadius: 8, background: highlighted ? CONFIG_BLUE : CARD, border: `1px solid ${highlighted ? CONFIG_BLUE : LINE}`, color: highlighted ? "#FFF" : INK }}>{value}</span>
       <button onClick={() => onChange(value + step)} style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>+</button>
       <span style={{ fontSize: 12, color: MUTED }}>min</span>
     </div>
@@ -276,7 +283,7 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
           {items.map((item, i) => (
             <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", borderRadius: 8, background: PAPER, border: `1px solid ${LINE}` }}>
               <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED }}>{i + 1}</span>
-              <span style={{ flex: 1, fontSize: 14, color: INK }}>{item}</span>
+              <span style={{ flex: 1, fontSize: 15, color: INK }}>{item}</span>
               <button onClick={() => move(i, -1)} disabled={i === 0} style={{ color: i === 0 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconUp size={16} /></button>
               <button onClick={() => move(i, 1)} disabled={i === items.length - 1} style={{ color: i === items.length - 1 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconDown size={16} /></button>
               <button onClick={() => remove(i)} style={{ color: "#B0413E", background: "none", border: "none" }}><IconX size={16} /></button>
@@ -284,10 +291,10 @@ function OrderedListEditor({ items, onChange, placeholder, entryName, onPendingC
           ))}
         </div>
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: highlightInput ? 8 : 0, margin: highlightInput ? "0 -8px" : 0, borderRadius: 8, background: highlightInput ? "#EFF7F1" : "transparent", animation: highlightInput ? "add-medication-pulse 1.7s ease-in-out infinite" : "none" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: highlightInput ? 8 : 0, margin: highlightInput ? "0 -8px" : 0, borderRadius: 8, background: highlightInput ? CONFIG_SOFT : "transparent", animation: highlightInput ? "add-medication-pulse 1.7s ease-in-out infinite" : "none" }}>
         <input ref={(element) => { inputRef.current = element; if (forwardedInputRef) forwardedInputRef.current = element; }} value={draft} onChange={(e) => { setDraft(e.target.value); onPendingChange(!!e.target.value.trim()); }} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
           onBlur={() => onPendingChange(false)}
-          placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `2px solid ${draft.trim() ? "#B0413E" : highlightInput ? SELECTED_GREEN : LINE}`, color: INK, outline: "none" }} />
+          placeholder={placeholder} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `2px solid ${draft.trim() ? "#B0413E" : highlightInput ? CONFIG_BLUE : LINE}`, color: INK, outline: "none" }} />
         <button onClick={add} style={{ width: 42, height: 42, borderRadius: 8, border: `1px solid ${LINE}`, color: MUTED, background: CARD, display: "flex", alignItems: "center", justifyContent: "center" }}><IconPlus size={18} /></button>
       </div>
       <TerminologySuggestions query={draft} terms={terms} premedOnly={entryName === "premeds"} labOnly={entryName === "labs"} onSelect={add} />
@@ -320,7 +327,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
   const toggleCountUpOnly = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, countUpOnly: !med.countUpOnly, durationMin: 0 } : med));
   const setObservation = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, observationMin: Math.max(1, Number(value) || 1), observationOpen: false } : med));
   const togglePostVitalsOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsOpen: !med.postVitalsOpen } : med));
-  const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsAtEnd: false, postVitalsOpen: false, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
+  const setPostVitalsMin = (i, value) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsAtEnd: false, postVitalsOpen: true, postVitalsMin: Math.max(1, Number(value) || 1) } : med));
   const setPostVitalsEnd = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, postVitalsEnabled: true, postVitalsAtEnd: true, postVitalsOpen: false } : med));
   const toggleVitalsOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, vitalsTimingOpen: !med.vitalsTimingOpen } : med));
   const toggleObservationOpen = (i) => onChange(items.map((med, idx) => idx === i ? { ...med, observationOpen: !med.observationOpen } : med));
@@ -336,8 +343,8 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
     const selections = (med.vitalsSelections || []).filter((entry) => !String(entry).startsWith("custom:"));
     return { ...med, vitalsCustomMin: minutes, vitalsSelections: [...selections, `custom:${minutes}`] };
   }));
-  const timingButtonStyle = (open, selected) => ({ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${open || selected ? SELECTED_GREEN : LINE}`, background: open || selected ? SELECTED_GREEN : CARD, color: open || selected ? "#FFF" : INK, fontSize: 12, fontWeight: 600, textAlign: "left" });
-  const timingMenuStyle = { display: "flex", alignItems: "center", gap: 7, marginTop: 8, padding: 8, borderRadius: 8, background: "#EFF7F1", border: `1px solid ${SELECTED_GREEN}` };
+  const timingButtonStyle = (open, selected) => ({ width: "100%", padding: "9px 8px", borderRadius: 7, border: `1px solid ${open || selected ? CONFIG_BLUE : LINE}`, background: open || selected ? CONFIG_BLUE : CARD, color: open || selected ? "#FFF" : INK, fontSize: 12, fontWeight: 600, textAlign: "left" });
+  const timingMenuStyle = { display: "flex", alignItems: "center", gap: 7, marginTop: 8, padding: 8, borderRadius: 8, background: CONFIG_SOFT, border: `1px solid ${CONFIG_LINE}` };
   return (
     <div>
       {items.length > 0 && (
@@ -346,7 +353,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
             <div key={i} style={{ padding: "8px 10px", borderRadius: 8, background: ["#F1F3F3", "#EEF5FA", "#EFF7F1"][i % 3], border: `1px solid ${LINE}` }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED }}>{i + 1}</span>
-                <span style={{ flex: 1, fontSize: 14, color: INK }}>{med.name}</span>
+                <span style={{ flex: 1, fontSize: 15, color: INK }}>{med.name}</span>
                 <button onClick={() => move(i, -1)} disabled={i === 0} style={{ color: i === 0 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconUp size={16} /></button>
                 <button onClick={() => move(i, 1)} disabled={i === items.length - 1} style={{ color: i === items.length - 1 ? "#C7CDCB" : MUTED, background: "none", border: "none" }}><IconDown size={16} /></button>
                 <button onClick={() => remove(i)} style={{ color: "#B0413E", background: "none", border: "none" }}><IconX size={16} /></button>
@@ -362,7 +369,7 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                     aria-invalid={!med.countUpOnly && Number(med.durationMin) <= 0} style={{ width: 72, height: 38, padding: "0 8px", borderRadius: 8, border: `2px solid ${Number(med.durationMin) > 0 || med.countUpOnly ? LINE : "#B0413E"}`, background: med.countUpOnly ? "#E4E8E7" : CARD, fontFamily: "'IBM Plex Mono', monospace", fontSize: 15, textAlign: "center", color: INK }} />
                   <span style={{ fontSize: 12, color: Number(med.durationMin) > 0 || med.countUpOnly ? MUTED : "#B0413E" }}>{med.countUpOnly ? "count up selected" : Number(med.durationMin) > 0 ? "minutes" : "Enter minutes or select count up"}</span>
                 </div>
-                <button onClick={() => toggleCountUpOnly(i)} aria-pressed={!!med.countUpOnly} style={{ width: "100%", marginTop: 8, padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.countUpOnly ? SELECTED_GREEN : LINE}`, background: med.countUpOnly ? SELECTED_GREEN : CARD, color: med.countUpOnly ? "#FFF" : INK, fontSize: 12, fontWeight: 600 }}>Count up timer only (e.g. IVIG, Ocrevus)</button>
+                <button onClick={() => toggleCountUpOnly(i)} aria-pressed={!!med.countUpOnly} style={{ width: "100%", marginTop: 8, padding: "9px 8px", borderRadius: 7, border: `1px solid ${med.countUpOnly ? CONFIG_BLUE : LINE}`, background: med.countUpOnly ? CONFIG_BLUE : CARD, color: med.countUpOnly ? "#FFF" : INK, fontSize: 12, fontWeight: 600 }}>Count up timer only (e.g. IVIG, Ocrevus)</button>
               </div>
               <div style={{ marginTop: 12, marginLeft: 19 }}>
                 <button onClick={() => toggleObservationOpen(i)} aria-expanded={!!med.observationOpen} style={timingButtonStyle(!!med.observationOpen, Number(med.observationMin) > 0)}>Observation period after this medication{Number(med.observationMin) > 0 ? ` · ${med.observationMin} min` : ""}</button>
@@ -379,11 +386,11 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
                 {med.vitalsTimingOpen && <div style={{ ...timingMenuStyle, display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))" }}>
                   {[{ label: "15 min", value: "15" }, { label: "30 min", value: "30" }, { label: "Every 30", value: "every30" }].map((option) => {
                     const selected = (med.vitalsSelections || []).includes(option.value);
-                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? SELECTED_GREEN : LINE}`, background: selected ? SELECTED_GREEN : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
+                    return <button key={option.value} onClick={() => toggleVitals(i, option.value)} style={{ padding: "8px 2px", borderRadius: 7, border: `1px solid ${selected ? CONFIG_BLUE : LINE}`, background: selected ? CONFIG_BLUE : CARD, color: selected ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>{option.label}</button>;
                   })}
                   <div style={{ gridColumn: "1 / -1", display: "flex", alignItems: "center", gap: 7, marginTop: 2 }}>
                     <button onClick={() => adjustVitalsCustom(i, -5)} style={{ width: 36, height: 32, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>−</button>
-                    <button onClick={() => toggleVitals(i, `custom:${med.vitalsCustomMin || 45}`)} style={{ flex: 1, padding: "7px 3px", borderRadius: 7, border: `1px solid ${(med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? SELECTED_GREEN : LINE}`, background: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? SELECTED_GREEN : CARD, color: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>Custom · {med.vitalsCustomMin || 45} min</button>
+                    <button onClick={() => toggleVitals(i, `custom:${med.vitalsCustomMin || 45}`)} style={{ flex: 1, padding: "7px 3px", borderRadius: 7, border: `1px solid ${(med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? CONFIG_BLUE : LINE}`, background: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? CONFIG_BLUE : CARD, color: (med.vitalsSelections || []).some((value) => value.startsWith("custom:")) ? "#FFF" : INK, fontSize: 11, fontWeight: 600 }}>Custom · {med.vitalsCustomMin || 45} min</button>
                     <button onClick={() => adjustVitalsCustom(i, 5)} style={{ width: 36, height: 32, borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK }}>+</button>
                   </div>
                 </div>}
@@ -401,10 +408,10 @@ function MedicationListEditor({ items, onChange, forwardedInputRef }) {
           ))}
         </div>
       )}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: items.length ? 8 : 0, margin: items.length ? "8px -8px -8px" : 0, borderRadius: 8, animation: items.length ? "add-medication-pulse 1.7s ease-in-out infinite" : "none" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: items.length ? 8 : 0, margin: items.length ? "8px -8px -8px" : 0, borderRadius: 8, background: items.length ? CONFIG_SOFT : "transparent", animation: items.length ? "add-medication-pulse 1.7s ease-in-out infinite" : "none" }}>
         <input ref={forwardedInputRef} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
-          placeholder={items.length ? "Add another medication?" : "e.g. Rituximab"} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${items.length ? SELECTED_GREEN : LINE}`, color: INK, outline: "none" }} />
-        <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${ACCENT}`, color: ACCENT, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
+          placeholder={items.length ? "Add another medication?" : "e.g. Rituximab"} style={{ flex: 1, fontSize: 14, padding: "10px 12px", borderRadius: 8, border: `1px solid ${items.length ? CONFIG_BLUE : LINE}`, color: INK, outline: "none" }} />
+        <button onClick={add} style={{ height: 42, padding: "0 16px", borderRadius: 8, border: `1px solid ${CONFIG_BLUE}`, color: CONFIG_BLUE, background: CARD, fontSize: 14, fontWeight: 600 }}>Enter</button>
       </div>
       <TerminologySuggestions query={draft} terms={terms} onSelect={add} />
     </div>
@@ -428,8 +435,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
   const usedNumbers = existing.filter((p) => p.type === type && p.id !== patient?.id).map((p) => p.number);
   const numberTaken = number !== "" && usedNumbers.includes(Number(number));
   const allMedicationDurationsEntered = todayMeds.length > 0 && todayMeds.every((med) => Number(med.durationMin) > 0 || med.countUpOnly);
-  const hasOpenTimingChoice = todayMeds.some((med) => !!med.vitalsTimingOpen || !!med.observationOpen || !!med.postVitalsOpen);
-  const canSave = initials.trim().length > 0 && Number(number) > 0 && !numberTaken && allMedicationDurationsEntered && !hasOpenTimingChoice;
+  const canSave = initials.trim().length > 0 && Number(number) > 0 && !numberTaken && allMedicationDurationsEntered;
 
   const save = () => {
     if (!canSave) return;
@@ -451,7 +457,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         {["chair", "bed"].map((t) => (
           <button key={t} onClick={() => setType(t)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, textTransform: "capitalize",
-            background: type === t ? ACCENT : CARD, color: type === t ? "#FFF" : INK, border: `1px solid ${type === t ? ACCENT : LINE}` }}>{t}</button>
+            background: type === t ? CONFIG_BLUE : CARD, color: type === t ? "#FFF" : INK, border: `1px solid ${type === t ? CONFIG_BLUE : LINE}` }}>{t}</button>
         ))}
       </div>
 
@@ -467,7 +473,7 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
       <FieldLabel>Labs to be drawn today?</FieldLabel>
       <div style={{ display: "flex", gap: 8, marginBottom: labsRequired ? 10 : 16 }}>
-        {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" onClick={() => { setLabsRequired(option.value); if (option.value) setTimeout(() => labsRef.current?.focus(), 0); else setLabs([]); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 600, background: labsRequired === option.value ? ACCENT : CARD, color: labsRequired === option.value ? "#FFF" : INK, border: `1px solid ${labsRequired === option.value ? ACCENT : LINE}` }}>{option.label}</button>)}
+        {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => <button key={option.label} type="button" onClick={() => { setLabsRequired(option.value); if (option.value) setTimeout(() => labsRef.current?.focus(), 0); else setLabs([]); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 600, background: labsRequired === option.value ? CONFIG_BLUE : CARD, color: labsRequired === option.value ? "#FFF" : INK, border: `1px solid ${labsRequired === option.value ? CONFIG_BLUE : LINE}` }}>{option.label}</button>)}
       </div>
       {labsRequired && <div style={{ marginBottom: 16 }}><OrderedListEditor items={labs} onChange={setLabs} placeholder="Add a lab to be drawn (e.g. CBC, BMP, or UA)" entryName="labs" forwardedInputRef={labsRef} highlightInput /></div>}
 
@@ -487,9 +493,9 @@ function NewPatientForm({ existing, patient = null, onSave, onCancel }) {
 
       <div style={{ display: "flex", gap: 8, paddingBottom: 16 }}>
         <button onClick={onCancel} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, border: `1px solid ${LINE}`, color: MUTED, background: CARD }}>Cancel</button>
-        <button onClick={save} disabled={!canSave} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, background: canSave ? ACCENT : "#C9DAD3", color: "#FFF", border: "none" }}>{patient ? "Save patient" : "Add patient"}</button>
+        <button onClick={save} disabled={!canSave} style={{ flex: 1, padding: "12px 0", borderRadius: 8, fontSize: 15, fontWeight: 500, background: canSave ? NAVY : DISABLED, color: "#FFF", border: "none" }}>{patient ? "Save patient" : "Add patient"}</button>
       </div>
-      {!canSave && <div style={{ fontSize: 12, paddingBottom: 24, color: MUTED }}>{hasOpenTimingChoice ? "Choose a timing option or collapse the open Vitals/Observation section before continuing." : `Needs initials, an open ${type} number, at least one medication, and either a duration or count-up timer for every medication.`}</div>}
+      {!canSave && <div style={{ fontSize: 12, paddingBottom: 24, color: MUTED }}>Needs initials, an open {type} number, at least one medication, and either a duration or count-up timer for every medication.</div>}
     </div>
   );
 }
@@ -624,16 +630,16 @@ function TabBar({ patients, activeId, onSelect, onAddTab, onLibrary, onSettings,
           </button>
         );
         })}
-        <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 84, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? ACCENT : "transparent"}` }}>
-          <IconPlus size={18} color={activeId === "new" ? ACCENT : MUTED} />
+        <button onClick={onAddTab} style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, flexShrink: 0, width: 66, height: 84, background: "none", border: "none", borderBottom: `3px solid ${activeId === "new" ? NAVY : "transparent"}` }}>
+          <IconPlus size={18} color={activeId === "new" ? NAVY : MUTED} />
         </button>
       </div>
       <div style={{ display: "flex", flexShrink: 0, background: CARD, borderLeft: `1px solid ${LINE}` }}>
         <button onClick={onLibrary} aria-label="Completed patient library" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 84, background: libraryActive ? "#EEF1F0" : "none", border: "none" }}>
-          <IconNotebook size={20} color={libraryActive ? ACCENT : MUTED} />
+          <IconNotebook size={20} color={libraryActive ? NAVY : MUTED} />
         </button>
         <button onClick={onSettings} aria-label="Optional settings" style={{ display: "flex", alignItems: "center", justifyContent: "center", width: 48, height: 84, background: settingsActive ? "#EEF1F0" : "none", border: "none" }}>
-          <IconGear size={20} color={settingsActive ? ACCENT : MUTED} />
+          <IconGear size={20} color={settingsActive ? NAVY : MUTED} />
         </button>
       </div>
     </div>
@@ -642,10 +648,10 @@ function TabBar({ patients, activeId, onSelect, onAddTab, onLibrary, onSettings,
 
 function ChecklistGate({ items, checked, onToggle, onSelectAll }) {
   return (
-    <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+    <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: ATTENTION_SOFT, border: `1px solid ${ATTENTION}` }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-        <IconShield size={14} color="#6E5AA3" />
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>Confirm before continuing</span>
+        <IconShield size={14} color={ATTENTION} />
+        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: ATTENTION }}>Confirm before continuing</span>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {items.map((item, i) => item ? (
@@ -664,16 +670,16 @@ function ChecklistGate({ items, checked, onToggle, onSelectAll }) {
   );
 }
 
-function EditableChecklist({ title, description, items, checked, onToggle, onSelectAll, onChange }) {
+function EditableChecklist({ title, description, items, checked, onToggle, onSelectAll, onChange, footer = null }) {
   const [draft, setDraft] = useState("");
   const [editing, setEditing] = useState(false);
   const update = (index, value) => onChange(items.map((item, itemIndex) => itemIndex === index ? value : item));
   const remove = (index) => onChange(items.filter((_, itemIndex) => itemIndex !== index));
   const add = () => { if (!draft.trim()) return; onChange([...items, draft.trim()]); setDraft(""); };
-  return <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+  return <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: ATTENTION_SOFT, border: `1px solid ${ATTENTION}` }}>
     <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 12 }}>
-      <IconShield size={14} color="#6E5AA3" />
-      <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>{title}</span>
+      <IconShield size={14} color={ATTENTION} />
+      <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: ATTENTION }}>{title}</span>
       <button type="button" onClick={() => setEditing((value) => !value)} style={{ padding: "4px 7px", borderRadius: 6, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11, fontWeight: 600 }}>{editing ? "Done" : "Edit checklist"}</button>
     </div>
     {editing && <div style={{ fontSize: 12, color: MUTED, marginBottom: 12 }}>{description}</div>}
@@ -686,13 +692,14 @@ function EditableChecklist({ title, description, items, checked, onToggle, onSel
     </div>
     {editing && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
       <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} placeholder="Add checklist item" aria-label={`New ${title} item`} style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} />
-      <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${ACCENT}`, background: CARD, color: ACCENT, fontWeight: 600 }}>Add</button>
+      <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${CONFIG_BLUE}`, background: CARD, color: CONFIG_BLUE, fontWeight: 600 }}>Add</button>
     </div>}
+    {footer}
     <button onClick={() => onSelectAll(true)} disabled={!items.length} style={{ width: "100%", marginTop: 14, padding: "11px 0", borderRadius: 8, border: `1px solid ${SELECTED_GREEN}`, background: items.length && items.every((item, index) => item.trim() && checked[index]) ? SELECTED_GREEN : CARD, color: items.length && items.every((item, index) => item.trim() && checked[index]) ? "#FFF" : SELECTED_GREEN, fontSize: 14, fontWeight: 600 }}>Select all</button>
   </div>;
 }
 
-function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange, onStartPremedTimer, onAdjustPremedTimer, onSetPremedScanComplete }) {
+function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange, onSetPremedScanComplete }) {
   const labs = patient.labs || [];
   const premeds = patient.premeds || [];
   const editableItems = preInfusionEditableItemsFor(patient);
@@ -700,29 +707,32 @@ function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange
   const premedOffset = labs.length;
   const editableOffset = labs.length + premeds.length;
   const items = [...labs, ...premeds.map((medication) => `${medication} given`), ...editableItems];
-  const [timerMinutes, setTimerMinutes] = useState(patient.premedWaitMin || 30);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState("");
   const update = (index, value) => onChange(editableItems.map((item, itemIndex) => itemIndex === index ? value : item));
   const remove = (index) => onChange(editableItems.filter((_, itemIndex) => itemIndex !== index));
   const add = () => { if (!draft.trim()) return; onChange([...editableItems, draft.trim()]); setDraft(""); };
   const fixedGroup = (title, entries, offset) => entries.length ? <>
-    <div style={{ marginTop: 14, marginBottom: 7, paddingLeft: 32, fontSize: 12, fontWeight: 700, color: "#6E5AA3", textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</div>
-    {entries.map((entry, index) => <label key={`${title}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingLeft: 18, marginBottom: 8, fontSize: 14, lineHeight: 1.35, color: INK }}>
+    <div style={{ marginTop: 14, marginBottom: 7, paddingLeft: 32, fontSize: 12, fontWeight: 700, color: ATTENTION, textTransform: "uppercase", letterSpacing: "0.04em" }}>{title}</div>
+    {entries.map((entry, index) => <label key={`${title}-${index}`} style={{ display: "flex", alignItems: "flex-start", gap: 10, paddingLeft: 18, marginBottom: 8, fontSize: 15, lineHeight: 1.35, color: INK }}>
       <input type="checkbox" checked={!!checked[offset + index]} onChange={() => onToggle(offset + index)} style={{ width: 20, height: 20, flexShrink: 0 }} />
       <span>{entry}</span>
     </label>)}
   </> : null;
   return (
     <>
-      <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: "#F7F5FB", border: "1px solid #E1D9F2" }}>
+      <div style={{ marginTop: 16, borderRadius: 10, padding: 16, background: ATTENTION_SOFT, border: `1px solid ${ATTENTION}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 10 }}>
-          <IconShield size={14} color="#6E5AA3" />
-          <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: "#6E5AA3" }}>Pre-infusion checklist</span>
+          <IconShield size={14} color={ATTENTION} />
+          <span style={{ flex: 1, fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, textTransform: "uppercase", letterSpacing: "0.04em", color: ATTENTION }}>Pre-infusion checklist</span>
           <button type="button" onClick={() => setEditing((value) => !value)} style={{ padding: "4px 7px", borderRadius: 6, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 11, fontWeight: 600 }}>{editing ? "Done" : "Edit checklist"}</button>
         </div>
         {fixedGroup("Required lab draw", labs, labOffset)}
         {fixedGroup("Required premeds", premeds.map((medication) => `${medication} given`), premedOffset)}
+        {premeds.length > 0 && <label style={{ display: "flex", alignItems: "center", gap: 10, margin: "10px 0 4px", padding: "10px 12px", borderRadius: 8, background: patient.premedScanComplete ? "#E8F3EE" : CARD, border: `1px solid ${patient.premedScanComplete ? "#A8D0BC" : LINE}`, color: patient.premedScanComplete ? ACCENT : INK, fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          <input type="checkbox" checked={!!patient.premedScanComplete} onChange={(event) => onSetPremedScanComplete(event.target.checked)} style={{ width: 20, height: 20, flexShrink: 0 }} />
+          <span>Premed scan complete</span>
+        </label>}
         {editableItems.map((item, index) => <div key={`editable-${index}`} style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 9 }}>
           <input type="checkbox" checked={!!checked[editableOffset + index]} onChange={() => onToggle(editableOffset + index)} aria-label={`Complete ${item || "checklist item"}`} style={{ width: 20, height: 20, flexShrink: 0 }} />
           {editing ? <input value={item} onChange={(event) => update(index, event.target.value)} aria-label={`Pre-infusion checklist item ${index + 1}`} style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} /> : <span style={{ flex: 1, fontSize: 15, lineHeight: 1.4, color: INK }}>{item}</span>}
@@ -730,27 +740,10 @@ function PreInfusionChecklist({ patient, checked, onToggle, onCheckAll, onChange
         </div>)}
         {editing && <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
           <input value={draft} onChange={(event) => setDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); add(); } }} placeholder="Add checklist item" aria-label="New pre-infusion checklist item" style={{ flex: 1, minWidth: 0, padding: "9px 10px", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 14 }} />
-          <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${ACCENT}`, background: CARD, color: ACCENT, fontWeight: 600 }}>Add</button>
+          <button type="button" onClick={add} style={{ padding: "0 13px", borderRadius: 7, border: `1px solid ${CONFIG_BLUE}`, background: CARD, color: CONFIG_BLUE, fontWeight: 600 }}>Add</button>
         </div>}
         <button onClick={() => onCheckAll(true)} disabled={!items.length} style={{ width: "100%", marginTop: 14, padding: "11px 0", borderRadius: 8, border: `1px solid ${SELECTED_GREEN}`, background: items.length && items.every((item, index) => item.trim() && checked[index]) ? SELECTED_GREEN : CARD, color: items.length && items.every((item, index) => item.trim() && checked[index]) ? "#FFF" : SELECTED_GREEN, fontSize: 14, fontWeight: 600 }}>Select all</button>
       </div>
-      {premeds.length > 0 && (
-        <div style={{ marginBottom: 18, padding: 12, borderRadius: 8, background: CARD, border: `1px solid ${LINE}` }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: INK, marginBottom: 10 }}>Premed timer</div>
-          <Stepper value={timerMinutes} onChange={setTimerMinutes} step={5} min={0} />
-          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-            <button onClick={() => onSetPremedScanComplete(!patient.premedScanComplete)} aria-pressed={!!patient.premedScanComplete} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${patient.premedScanComplete ? SELECTED_GREEN : LINE}`, background: patient.premedScanComplete ? SELECTED_GREEN : CARD, color: patient.premedScanComplete ? "#FFF" : INK, fontWeight: 600 }}>{patient.premedScanComplete ? "Scan complete" : "Scan complete?"}</button>
-            <button onClick={() => onStartPremedTimer(timerMinutes)} disabled={!patient.premedScanComplete} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: "none", background: patient.premedScanComplete ? ACCENT : "#C9DAD3", color: "#FFF", fontWeight: 600 }}>{patient.premedTimerStarted ? "Restart timer" : "Start timer"}</button>
-          </div>
-          {patient.premedTimerStarted && <>
-            <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Timer running · {mmss(patient.remaining || 0)} remaining</div>
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button onClick={() => onAdjustPremedTimer(-1)} style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 12, fontWeight: 600 }}>− 1 min</button>
-              <button onClick={() => onAdjustPremedTimer(1)} style={{ flex: 1, padding: "8px 0", borderRadius: 7, border: `1px solid ${LINE}`, background: CARD, color: INK, fontSize: 12, fontWeight: 600 }}>+ 1 min</button>
-            </div>
-          </>}
-        </div>
-      )}
     </>
   );
 }
@@ -783,7 +776,7 @@ function NotesSection({ notes, tasks, onAdd, onAddTask, onToggleTask }) {
       {notes.length > 0 && (
         <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
           {notes.slice().reverse().map((n, i) => (
-            <div key={i} style={{ fontSize: 13, color: MUTED }}><span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{n.t}</span> \u2014 {n.text}</div>
+            <div key={i} style={{ fontSize: 13, color: MUTED }}><span style={{ fontFamily: "'IBM Plex Mono', monospace" }}>{n.t}</span><span aria-hidden="true"> · </span>{String(n.text || "").replace(/\\u2014/g, "—")}</div>
           ))}
         </div>
       )}
@@ -827,11 +820,17 @@ function VitalsTimers({ timers, onComplete }) {
 
 function CustomCountdown({ timer, onStart, onClear }) {
   const [duration, setDuration] = useState(15);
+  const [open, setOpen] = useState(false);
   const running = timer?.status === "running";
   const complete = timer?.status === "complete";
+  useEffect(() => { if (running || complete) setOpen(true); }, [running, complete]);
   return (
-    <div style={{ marginTop: 16, padding: 14, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
-      <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", color: MUTED, marginBottom: 8 }}>Optional alert timer</div>
+    <div style={{ marginTop: 16, padding: 10, borderRadius: 10, background: CONFIG_SOFT, border: `1px solid ${CONFIG_LINE}` }}>
+      <button onClick={() => setOpen((value) => !value)} aria-expanded={open} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 3px", border: "none", background: "transparent", color: CONFIG_BLUE, fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+        <span>Optional alert timer{running ? ` · ${mmss(timer.remaining || 0)}` : complete ? " · Alert reached" : ""}</span>
+        {open ? <IconUp size={16} /> : <IconDown size={16} />}
+      </button>
+      {open && <div style={{ marginTop: 10 }}>
       {!running && !complete ? (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button onClick={() => setDuration(Math.max(5, duration - 5))} aria-label="Reduce alert timer by five minutes" style={{ width: 40, height: 40, borderRadius: 8, border: `1px solid ${LINE}`, color: INK, background: CARD }}>−</button>
@@ -846,6 +845,7 @@ function CustomCountdown({ timer, onStart, onClear }) {
           <button onClick={onClear} style={{ marginTop: 10, width: "100%", padding: "9px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 13 }}>{complete ? "Clear timer" : "Cancel timer"}</button>
         </div>
       )}
+      </div>}
     </div>
   );
 }
@@ -865,14 +865,14 @@ function AdditionalInfusionPanel({ onAdd }) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState([]);
   const ready = items.length > 0 && items.every((item) => Number(item.durationMin) > 0 || item.countUpOnly);
-  if (!open) return <button onClick={() => setOpen(true)} style={{ width: "100%", marginTop: 16, padding: "11px 0", borderRadius: 8, border: `1px dashed ${ACCENT}`, background: "#EFF7F1", color: ACCENT, fontSize: 14, fontWeight: 600 }}>Add additional infusion</button>;
+  if (!open) return <button onClick={() => setOpen(true)} style={{ width: "100%", marginTop: 16, padding: "11px 0", borderRadius: 8, border: `1px dashed ${CONFIG_BLUE}`, background: CONFIG_SOFT, color: CONFIG_BLUE, fontSize: 14, fontWeight: 600 }}>Add additional infusion</button>;
   return (
-    <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: "#EFF7F1", border: `1px solid #B9D9CC` }}>
+    <div style={{ marginTop: 16, padding: 12, borderRadius: 10, background: CONFIG_SOFT, border: `1px solid ${CONFIG_LINE}` }}>
       <div style={{ fontSize: 14, fontWeight: 600, color: INK, marginBottom: 8 }}>Additional infusion</div>
       <MedicationListEditor items={items} onChange={setItems} />
       <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
         <button onClick={() => { setItems([]); setOpen(false); }} style={{ flex: 1, padding: "10px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 13, fontWeight: 600 }}>Cancel</button>
-        <button onClick={() => { if (!ready) return; onAdd(items); setItems([]); setOpen(false); }} disabled={!ready} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: ready ? ACCENT : "#C9DAD3", color: "#FFF", fontSize: 13, fontWeight: 600 }}>Add to active medications</button>
+        <button onClick={() => { if (!ready) return; onAdd(items); setItems([]); setOpen(false); }} disabled={!ready} style={{ flex: 2, padding: "10px 0", borderRadius: 8, border: "none", background: ready ? NAVY : DISABLED, color: "#FFF", fontSize: 13, fontWeight: 600 }}>Add to active medications</button>
       </div>
       {!ready && <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Add a medication, then enter its duration or select count up.</div>}
     </div>
@@ -897,20 +897,27 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onSet
           : run.status === "running" && hasPrescribedDuration ? "remaining"
           : run.status === "running" ? "elapsed" : "ready";
         return (
-          <div key={`${run.name}-${index}`} style={{ padding: 16, borderRadius: 12, background: run.status === "complete" ? "#EEF1EF" : CARD, border: `1px solid ${run.status === "running" ? ACCENT : LINE}`, opacity: run.status === "complete" ? 0.68 : 1 }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: MUTED, textTransform: "uppercase", marginBottom: 4 }}>Medication {index + 1} of {runs.length}{run.status === "running" ? " · Running" : ""}</div>
+          <div key={`${run.name}-${index}`} style={{ padding: 16, borderRadius: 12, background: run.isAdditionalInfusion ? "#EAF3FB" : run.status === "complete" ? "#EEF1EF" : CARD, border: `1px solid ${run.isAdditionalInfusion ? "#8DB9D8" : run.status === "running" ? ACCENT : LINE}`, opacity: run.status === "complete" ? 0.68 : 1 }}>
+            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: run.isAdditionalInfusion ? "#2D6F9E" : MUTED, textTransform: "uppercase", marginBottom: 4 }}>Medication {index + 1} of {runs.length}{run.isAdditionalInfusion ? " · Added during infusion" : run.status === "running" ? " · Running" : ""}</div>
             <div style={{ fontSize: 18, fontWeight: 600, color: INK, marginBottom: 12 }}>{run.name}</div>
-            <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 14, color: INK }}>
-              <input type="checkbox" checked={!!run.orderConfirmed} disabled={run.status !== "pending"} onChange={(e) => onToggleMedicationCheck(index, "orderConfirmed", e.target.checked)} />
-              Medication order confirmed: {run.name}
+            <label style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, padding: "12px", borderRadius: 9, background: run.orderConfirmed ? "#E8F3EE" : ATTENTION_SOFT, border: `2px solid ${run.orderConfirmed ? ACCENT : ATTENTION}`, fontSize: 15, fontWeight: 700, color: run.orderConfirmed ? ACCENT : INK, cursor: run.status === "pending" ? "pointer" : "default" }}>
+              <input type="checkbox" checked={!!run.orderConfirmed} disabled={run.status !== "pending"} onChange={(e) => onToggleMedicationCheck(index, "orderConfirmed", e.target.checked)} style={{ width: 24, height: 24, flexShrink: 0 }} />
+              <span><span style={{ display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>1 · Required</span>Medication order confirmed</span>
             </label>
             {run.filterRequired && (
-              <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10, fontSize: 14, color: INK }}>
-                <input type="checkbox" checked={!!run.filterReady} disabled={run.status !== "pending"} onChange={(e) => onToggleMedicationCheck(index, "filterReady", e.target.checked)} />
+              <label style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, padding: "10px 12px", borderRadius: 8, background: run.filterReady ? "#E8F3EE" : run.orderConfirmed && run.scanComplete ? ATTENTION_SOFT : CARD, border: `1px solid ${run.filterReady ? ACCENT : run.orderConfirmed && run.scanComplete ? ATTENTION : LINE}`, fontSize: 14, fontWeight: 600, color: run.filterReady ? ACCENT : INK }}>
+                <input type="checkbox" checked={!!run.filterReady} disabled={run.status !== "pending"} onChange={(e) => onToggleMedicationCheck(index, "filterReady", e.target.checked)} style={{ width: 20, height: 20 }} />
                 Filter ready: {run.name}
               </label>
             )}
-            <button onClick={() => onToggleMedicationCheck(index, "scanComplete", !run.scanComplete)} disabled={run.status !== "pending"} aria-pressed={!!run.scanComplete} style={{ width: "100%", marginBottom: 10, padding: "10px 0", borderRadius: 8, border: `1px solid ${run.scanComplete ? SELECTED_GREEN : LINE}`, background: run.scanComplete ? SELECTED_GREEN : CARD, color: run.scanComplete ? "#FFF" : INK, fontSize: 13, fontWeight: 600 }}>{run.scanComplete ? "Scan complete" : "Scan complete?"}</button>
+            <label style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8, padding: "12px", borderRadius: 9, background: run.scanComplete ? "#E8F3EE" : run.orderConfirmed ? ATTENTION_SOFT : "#F2F4F3", border: `2px solid ${run.scanComplete ? ACCENT : run.orderConfirmed ? ATTENTION : LINE}`, fontSize: 15, fontWeight: 700, color: run.scanComplete ? ACCENT : run.orderConfirmed ? INK : MUTED, cursor: run.status === "pending" && run.orderConfirmed ? "pointer" : "default" }}>
+              <input type="checkbox" checked={!!run.scanComplete} disabled={run.status !== "pending" || !run.orderConfirmed} onChange={(e) => onToggleMedicationCheck(index, "scanComplete", e.target.checked)} style={{ width: 24, height: 24, flexShrink: 0 }} />
+              <span><span style={{ display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>2 · Required</span>{run.scanComplete ? "Scan complete" : run.orderConfirmed ? "Scan complete" : "Confirm order first"}</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 12, padding: "12px", borderRadius: 9, background: run.status === "running" ? "#E8F3EE" : readyToStart ? ATTENTION_SOFT : "#F2F4F3", border: `2px solid ${run.status === "running" ? ACCENT : readyToStart ? ATTENTION : LINE}`, fontSize: 15, fontWeight: 700, color: run.status === "running" ? ACCENT : readyToStart ? INK : MUTED, cursor: run.status === "pending" && readyToStart ? "pointer" : "default" }}>
+              <input type="checkbox" checked={run.status === "running" || run.status === "complete"} disabled={run.status !== "pending" || !readyToStart} onChange={(e) => { if (e.target.checked) onStartMedication(index); }} style={{ width: 24, height: 24, flexShrink: 0 }} />
+              <span><span style={{ display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>3 · Required</span>{run.status === "running" ? "Infusion started" : readyToStart ? "Start infusion" : run.scanComplete && run.filterRequired && !run.filterReady ? "Mark filter ready first" : "Complete prior steps first"}</span>
+            </label>
             <div style={{ marginTop: 10, fontSize: 12, color: MUTED }}>Planned duration: {Number(run.durationMin) > 0 ? `${run.durationMin} min` : run.countUpOnly ? "count up timer only" : "not specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Vitals during: {(run.vitalsSelections || []).length ? run.vitalsSelections.map((value) => value === "every30" ? "Every 30" : value.startsWith("custom:") ? `${value.split(":")[1]} min` : `${value} min`).join(", ") : "none specified"}</div>
             <div style={{ marginTop: 4, fontSize: 12, color: MUTED }}>Post Infusion VS: {run.postVitalsEnabled ? run.postVitalsAtEnd ? "at end" : `${run.postVitalsMin || 30} min after medication` : "none specified"}</div>
@@ -933,16 +940,20 @@ function MedicationTimers({ p, onToggleMedicationCheck, onStartMedication, onSet
               </div>
             )}
             {run.vitalsTimers?.length > 0 && <VitalsTimers timers={run.vitalsTimers} onComplete={(timerIndex) => onCompleteMedicationVitals(index, timerIndex)} />}
-            {run.status === "pending" && (
-              <button onClick={() => onStartMedication(index)} disabled={!readyToStart} style={{ width: "100%", marginTop: 12, padding: "12px 0", borderRadius: 8, border: "none", background: readyToStart ? ACCENT : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Start infusion</button>
-            )}
             {run.status === "running" && (
-              <div style={{ display: "flex", gap: 8, marginTop: 12 }}>
-                <button onClick={() => onResetMedication(index)} style={{ flex: 1, padding: "12px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 14, fontWeight: 500 }}>Undo Start</button>
-                <button onClick={() => onCompleteMedication(index)} style={{ flex: 2, padding: "12px 0", borderRadius: 8, border: "none", background: "#3B7A57", color: "#FFF", fontSize: 15, fontWeight: 500 }}>Complete Medication</button>
-              </div>
+              <>
+                <label style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, padding: "12px", borderRadius: 9, background: ATTENTION_SOFT, border: `2px solid ${ATTENTION}`, fontSize: 15, fontWeight: 700, color: INK, cursor: "pointer" }}>
+                  <input type="checkbox" checked={false} onChange={(e) => { if (e.target.checked) onCompleteMedication(index); }} style={{ width: 24, height: 24, flexShrink: 0 }} />
+                  <span><span style={{ display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>4 · Required</span>Medication complete</span>
+                </label>
+                <button onClick={() => onResetMedication(index)} style={{ width: "100%", marginTop: 8, padding: "10px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 13, fontWeight: 600 }}>Undo Start</button>
+              </>
             )}
             {run.status === "complete" && <>
+              <label style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12, padding: "12px", borderRadius: 9, background: "#E8F3EE", border: `2px solid ${ACCENT}`, fontSize: 15, fontWeight: 700, color: ACCENT }}>
+                <input type="checkbox" checked readOnly disabled style={{ width: 24, height: 24, flexShrink: 0 }} />
+                <span><span style={{ display: "block", fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, textTransform: "uppercase", letterSpacing: "0.04em", marginBottom: 2 }}>4 · Complete</span>Medication complete</span>
+              </label>
               <div style={{ marginTop: 8, fontSize: 12, color: MUTED }}>Completed at {run.completedAt} · Duration {mmss((run.elapsedSeconds || 0) / 60)}</div>
               <button onClick={() => onResetMedication(index)} style={{ width: "100%", marginTop: 10, padding: "10px 0", borderRadius: 8, border: `1px solid ${LINE}`, background: CARD, color: MUTED, fontSize: 13, fontWeight: 600 }}>Undo completed medication</button>
             </>}
@@ -973,13 +984,14 @@ function MedicationObservationTimers({ p }) {
   );
 }
 
-function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsChange, onPreInfusionItemsChange, onEndOfVisitItemsChange, onCompleteItemsChange, onStartPremedTimer, onAdjustPremedTimer, onSetPremedScanComplete, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onStartCustomCountdown, onClearCustomCountdown, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onAdjustMedicationTime, onResetMedication, onCompleteMedication, onCompleteMedicationVitals, onAddAdditionalInfusions }) {
+function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsChange, onPreInfusionItemsChange, onEndOfVisitItemsChange, onCompleteItemsChange, onStartPremedTimer, onAdjustPremedTimer, onSetPremedScanComplete, onSetPortAccess, onAddNote, onAddTask, onToggleTask, onDelete, onCompletePatient, onToggleMedicationCheck, onStartMedication, onSetMedicationDuration, onAdjustMedicationTime, onResetMedication, onCompleteMedication, onCompleteMedicationVitals, onAddAdditionalInfusions }) {
   const screenRef = useRef(null);
   const cfg = STAGES[p.stage];
   const incompleteTasks = (p.tasks || []).filter((task) => !task.done).length;
   const completeReady = completeItemsFor(p).every((item, index) => !item || !!checked[index]) && incompleteTasks === 0;
   const isGated = !!cfg.gate;
   const gateItems = cfg.gate === "GENERAL" ? chartReviewItemsFor(p) : cfg.gate === "PREINFUSION" ? preInfusionItemsFor(p) : cfg.gate === "DISCHARGE" ? endOfVisitItemsFor(p) : [];
+  const portAccessFooter = <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${LINE}` }}><div style={{ fontSize: 15, fontWeight: 500, color: INK, marginBottom: 10 }}>Port access?</div><div style={{ display: "flex", gap: 8 }}>{[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => { const selected = p.portAccess === option.value; return <button key={option.label} onClick={() => onSetPortAccess(option.value)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, background: selected ? CONFIG_BLUE : CARD, color: selected ? "#FFF" : INK, border: `1px solid ${selected ? CONFIG_BLUE : LINE}` }}>{option.label}</button>; })}</div></div>;
   useEffect(() => {
     screenRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [p.id, p.stage]);
@@ -995,7 +1007,6 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsCh
       </div>
 
       {p.stage === "infusing" && <MedicationTimers p={p} onToggleMedicationCheck={onToggleMedicationCheck} onStartMedication={onStartMedication} onSetMedicationDuration={onSetMedicationDuration} onAdjustMedicationTime={onAdjustMedicationTime} onResetMedication={onResetMedication} onCompleteMedication={onCompleteMedication} onCompleteMedicationVitals={onCompleteMedicationVitals} onAddAdditionalInfusions={onAddAdditionalInfusions} />}
-      {p.stage === "infusing" && <CustomCountdown timer={p.customCountdown} onStart={onStartCustomCountdown} onClear={onClearCustomCountdown} />}
       {p.stage === "observation" && <MedicationObservationTimers p={p} />}
 
       {cfg.timer && p.stage !== "observation" && (
@@ -1028,24 +1039,13 @@ function BayScreen({ p, checked, onToggleCheck, onCheckAll, onChartReviewItemsCh
           </div>
           <EditableChecklist title="Complete visit checklist" description="Edit items for this patient, then check each completed item before completing the visit." items={completeItemsFor(p)} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onCompleteItemsChange} />
           {incompleteTasks > 0 && <div style={{ marginTop: 12, fontSize: 13, color: "#B0413E" }}>Complete {incompleteTasks} task{incompleteTasks === 1 ? "" : "s"} in Notes before finishing this patient.</div>}
-          <button onClick={onCompletePatient} disabled={!completeReady} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: completeReady ? SELECTED_GREEN : "#C9DAD3", color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
+          <button onClick={onCompletePatient} disabled={!completeReady} style={{ width: "100%", marginTop: 16, padding: "13px 0", borderRadius: 8, border: "none", background: completeReady ? SELECTED_GREEN : DISABLED, color: "#FFF", fontSize: 15, fontWeight: 700 }}>Complete Patient</button>
         </div>
       )}
 
       {p.stage === "pre-infusion-check" ? (
-        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onChange={onPreInfusionItemsChange} onStartPremedTimer={onStartPremedTimer} onAdjustPremedTimer={onAdjustPremedTimer} onSetPremedScanComplete={onSetPremedScanComplete} />
-      ) : p.stage === "chart-review" ? <EditableChecklist title="Chart review checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onChartReviewItemsChange} /> : p.stage === "discharge-check" ? <EditableChecklist title="End-of-visit checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onEndOfVisitItemsChange} /> : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={null} /> : null}
-      {p.stage === "chart-review" && (
-        <div style={{ marginTop: 12, padding: 16, borderRadius: 10, background: CARD, border: `1px solid ${LINE}` }}>
-          <div style={{ fontSize: 15, fontWeight: 500, color: INK, marginBottom: 10 }}>Port access?</div>
-          <div style={{ display: "flex", gap: 8 }}>
-            {[{ label: "Yes", value: true }, { label: "No", value: false }].map((option) => {
-              const selected = p.portAccess === option.value;
-              return <button key={option.label} onClick={() => onSetPortAccess(option.value)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, background: selected ? ACCENT : CARD, color: selected ? "#FFF" : INK, border: `1px solid ${selected ? ACCENT : LINE}` }}>{option.label}</button>;
-            })}
-          </div>
-        </div>
-      )}
+        <PreInfusionChecklist patient={p} checked={checked} onToggle={onToggleCheck} onCheckAll={onCheckAll} onChange={onPreInfusionItemsChange} onSetPremedScanComplete={onSetPremedScanComplete} />
+      ) : p.stage === "chart-review" ? <EditableChecklist title="Chart review checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onChartReviewItemsChange} footer={portAccessFooter} /> : p.stage === "discharge-check" ? <EditableChecklist title="End-of-visit checklist" description="Edit items for this patient, then check each completed item before continuing." items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={onCheckAll} onChange={onEndOfVisitItemsChange} /> : isGated ? <ChecklistGate items={gateItems} checked={checked} onToggle={onToggleCheck} onSelectAll={null} /> : null}
       <NotesSection key={p.id} notes={p.notes || []} tasks={p.tasks || []} onAdd={onAddNote} onAddTask={onAddTask} onToggleTask={onToggleTask} />
       {p.stage !== "complete" && (
         <button onClick={onDelete} style={{ marginTop: 24, width: "100%", padding: "10px 0", borderRadius: 8, fontSize: 14, fontWeight: 500, color: "#B0413E", background: CARD, border: "1px solid #E7B9B6" }}>
@@ -1065,7 +1065,7 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
   const gateItems = isGated ? (cfg.gate === "GENERAL" ? chartReviewItemsFor(p) : cfg.gate === "PREINFUSION" ? preInfusionItemsFor(p) : endOfVisitItemsFor(p)) : [];
   const allDone = gateItems.every((item, i) => !item || checked[i]) &&
     (p.stage !== "chart-review" || typeof p.portAccess === "boolean") &&
-    (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || (p.premedScanComplete && p.premedTimerStarted));
+    (p.stage !== "pre-infusion-check" || !(p.premeds || []).length || p.premedScanComplete);
   const allMedicationsComplete = p.stage !== "infusing" || ((p.medicationRuns || []).length > 0 && p.medicationRuns.every((run) => run.status === "complete"));
   return (
     <div style={{ display: "flex", flexShrink: 0, gap: 8, padding: "12px 20px", borderTop: `1px solid ${LINE}`, background: CARD }}>
@@ -1075,8 +1075,8 @@ function BottomBar({ p, checked, onAdvance, onRetreat, onBackToNew, onGateContin
         </button>
       )}
       {nextStage && (
-        <button onClick={isGated ? onGateContinue : onAdvance} disabled={(isGated && !allDone) || !allMedicationsComplete} style={{ flex: 1, fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: (isGated && !allDone) || !allMedicationsComplete ? "#DCD5EA" : cfg.color, color: "#FFF", border: "none" }}>
-          {!allMedicationsComplete ? "Complete all medications to continue" : isGated ? (allDone ? "Confirmed \u2014 continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedScanComplete ? "Confirm premed scan to continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedTimerStarted ? "Start premed timer to continue" : "Check all items to continue") : `Advance to: ${STAGES[nextStage].label}`}
+        <button onClick={isGated ? onGateContinue : onAdvance} disabled={(isGated && !allDone) || !allMedicationsComplete} style={{ flex: 1, fontSize: 15, fontWeight: 500, padding: "14px 0", borderRadius: 10, background: (isGated && !allDone) || !allMedicationsComplete ? DISABLED : NAVY, color: "#FFF", border: "none" }}>
+          {!allMedicationsComplete ? "Complete all medications to continue" : isGated ? (allDone ? p.stage === "pre-infusion-check" && (p.premeds || []).length ? "Start premed timer to continue" : "Confirmed \u2014 continue" : p.stage === "pre-infusion-check" && (p.premeds || []).length && !p.premedScanComplete ? "Complete premed scan to continue" : "Check all items to continue") : `Advance to: ${STAGES[nextStage].label}`}
         </button>
       )}
     </div>
@@ -1196,6 +1196,7 @@ function App() {
   const [settings, setSettings] = useState(loadAlertSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [showLibrary, setShowLibrary] = useState(false);
+  const [dischargeNotice, setDischargeNotice] = useState(null);
   const vibratedAlertsRef = useRef(new Set());
   const audioContextRef = useRef(null);
 
@@ -1240,6 +1241,12 @@ function App() {
   useEffect(() => {
     try { localStorage.setItem(COMPLETED_STORAGE_KEY, JSON.stringify(completedPatients)); } catch (e) {}
   }, [completedPatients]);
+
+  useEffect(() => {
+    if (!dischargeNotice) return undefined;
+    const timeout = setTimeout(() => setDischargeNotice(null), 2400);
+    return () => clearTimeout(timeout);
+  }, [dischargeNotice]);
 
   useEffect(() => {
     patients.forEach((patient) => {
@@ -1457,7 +1464,11 @@ function App() {
   const onSetPortAccess = useCallback((id, value) => {
     setPatients((prev) => prev.map((patient) => patient.id === id ? { ...patient, portAccess: value } : patient));
   }, []);
-  const onAddNote = useCallback((id, text) => { setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, notes: [...p.notes, { t: nowTime(), text }] } : p))); }, []);
+  const onAddNote = useCallback((id, text) => {
+    const cleanText = String(text || "").trim().replace(/\\u2014/g, "—");
+    if (!cleanText) return;
+    setPatients((prev) => prev.map((p) => (p.id === id ? { ...p, notes: [...p.notes, { t: nowTime(), text: cleanText }] } : p)));
+  }, []);
   const onAddTask = useCallback((id, text) => { setPatients((prev) => prev.map((p) => p.id === id ? { ...p, tasks: [...(p.tasks || []), { id: `${Date.now()}-${Math.random()}`, text, done: false }] } : p)); }, []);
   const onToggleTask = useCallback((id, taskId) => { setPatients((prev) => prev.map((p) => p.id === id ? { ...p, tasks: (p.tasks || []).map((task) => task.id === taskId ? { ...task, done: !task.done } : task) } : p)); }, []);
   const onCompleteVitals = useCallback((id, index) => {
@@ -1479,7 +1490,7 @@ function App() {
   const onAddAdditionalInfusions = useCallback((id, additions) => {
     setPatients((prev) => prev.map((p) => {
       if (p.id !== id || !additions?.length) return p;
-      const newMeds = additions.map((med) => ({ ...med, vitalsSelections: med.vitalsSelections || [], vitalsCustomMin: med.vitalsCustomMin || 45, postVitalsEnabled: !!med.postVitalsEnabled, postVitalsAtEnd: !!med.postVitalsAtEnd, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired }));
+      const newMeds = additions.map((med) => ({ ...med, isAdditionalInfusion: true, vitalsSelections: med.vitalsSelections || [], vitalsCustomMin: med.vitalsCustomMin || 45, postVitalsEnabled: !!med.postVitalsEnabled, postVitalsAtEnd: !!med.postVitalsAtEnd, postVitalsMin: med.postVitalsMin || 30, filterRequired: !!med.filterRequired }));
       const newRuns = newMeds.map((med) => ({ ...med, orderConfirmed: false, filterReady: false, scanComplete: false, status: "pending", elapsedSeconds: 0 }));
       return { ...p, todayMeds: [...(p.todayMeds || []), ...newMeds], medicationRuns: [...(p.medicationRuns || []), ...newRuns] };
     }));
@@ -1622,6 +1633,7 @@ function App() {
     });
     vibratedAlertsRef.current.delete(id);
     setActiveId(remainingPatients[0]?.id ?? "new");
+    setDischargeNotice({ initials: patient.initials });
   }, [patients, checkedMap]);
 
   const onDeleteCompletedPatient = useCallback((id) => {
@@ -1656,7 +1668,13 @@ function App() {
     <div onPointerDown={primeAudio} style={{ width: "100%", height: "100dvh", minHeight: 0, overflow: "hidden", display: "flex", justifyContent: "center", background: "#E7E9E7" }}>
       <div style={{ width: "100%", maxWidth: PHONE_W, height: "100dvh", minHeight: 0, overflow: "hidden", background: PAPER, display: "flex", flexDirection: "column" }}>
         <TabBar patients={patients} activeId={activeId} onSelect={onSelectPatient} onAddTab={() => { setEditingId(null); setShowSettings(false); setShowLibrary(false); setActiveId("new"); }} onLibrary={() => { setShowLibrary(true); setShowSettings(false); }} onSettings={() => { setShowSettings(true); setShowLibrary(false); }} libraryActive={showLibrary} settingsActive={showSettings} />
-        {showLibrary ? (
+        {dischargeNotice ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14, padding: 28, textAlign: "center", background: "#E8F3EE" }}>
+            <div style={{ width: 68, height: 68, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 999, background: ACCENT, color: "#FFF" }}><IconCheck size={36} /></div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: INK }}>Patient Successfully Discharged.</div>
+            <div style={{ fontSize: 15, color: MUTED }}>Visit archived in library.</div>
+          </div>
+        ) : showLibrary ? (
           <CompletedLibrary patients={completedPatients} onDelete={onDeleteCompletedPatient} onDeleteAll={onDeleteAllCompletedPatients} onClose={() => setShowLibrary(false)} />
         ) : showSettings ? (
           <SettingsScreen settings={settings} onChange={onChangeSetting} onClose={() => setShowSettings(false)} />
@@ -1664,7 +1682,7 @@ function App() {
           <NewPatientForm key={editingPatient?.id || "new"} existing={patients} patient={editingPatient} onSave={onSavePatient} onCancel={() => { setActiveId(editingPatient?.id ?? patients[0]?.id ?? "new"); setEditingId(null); }} />
         ) : activePatient ? (
           <>
-            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onChartReviewItemsChange={(items) => onChartReviewItemsChange(activeId, items)} onPreInfusionItemsChange={(items) => onPreInfusionItemsChange(activeId, items)} onEndOfVisitItemsChange={(items) => onEndOfVisitItemsChange(activeId, items)} onCompleteItemsChange={(items) => onCompleteItemsChange(activeId, items)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onAdjustPremedTimer={(delta) => onAdjustPremedTimer(activeId, delta)} onSetPremedScanComplete={(value) => onSetPremedScanComplete(activeId, value)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)} onStartCustomCountdown={(duration) => onStartCustomCountdown(activeId, duration)} onClearCustomCountdown={() => onClearCustomCountdown(activeId)}
+            <BayScreen key={activePatient.id} p={activePatient} checked={activeChecked} onToggleCheck={(i) => onToggleCheck(activeId, activePatient.stage, i)} onCheckAll={(value) => onCheckAll(activeId, activePatient.stage, value)} onChartReviewItemsChange={(items) => onChartReviewItemsChange(activeId, items)} onPreInfusionItemsChange={(items) => onPreInfusionItemsChange(activeId, items)} onEndOfVisitItemsChange={(items) => onEndOfVisitItemsChange(activeId, items)} onCompleteItemsChange={(items) => onCompleteItemsChange(activeId, items)} onStartPremedTimer={(minutes) => onStartPremedTimer(activeId, minutes)} onAdjustPremedTimer={(delta) => onAdjustPremedTimer(activeId, delta)} onSetPremedScanComplete={(value) => onSetPremedScanComplete(activeId, value)} onSetPortAccess={(value) => onSetPortAccess(activeId, value)} onAddNote={(text) => onAddNote(activeId, text)} onAddTask={(text) => onAddTask(activeId, text)} onToggleTask={(taskId) => onToggleTask(activeId, taskId)} onDelete={() => onDeletePatient(activeId)} onCompletePatient={() => onCompletePatient(activeId)}
               onToggleMedicationCheck={(index, field, checked) => onToggleMedicationCheck(activeId, index, field, checked)} onStartMedication={(index) => onStartMedication(activeId, index)} onSetMedicationDuration={(index, minutes) => onSetMedicationDuration(activeId, index, minutes)} onAdjustMedicationTime={(index, delta) => onAdjustMedicationTime(activeId, index, delta)} onResetMedication={(index) => onResetMedication(activeId, index)} onCompleteMedication={(index) => onCompleteMedication(activeId, index)} onCompleteMedicationVitals={(medicationIndex, timerIndex) => onCompleteMedicationVitals(activeId, medicationIndex, timerIndex)} onAddAdditionalInfusions={(items) => onAddAdditionalInfusions(activeId, items)} />
             <BottomBar p={activePatient} checked={activeChecked} onAdvance={() => onAdvance(activeId)} onRetreat={() => onRetreat(activeId)} onBackToNew={() => { setEditingId(activeId); setActiveId("new"); }} onGateContinue={() => onGateContinue(activeId)} />
           </>
