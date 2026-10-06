@@ -1,0 +1,8 @@
+{
+  "schemaVersion": "1.0.0",
+  "neverSilentlyExpand": ["U","u","IU","QD","qd","QOD","qod","MS","MSO4","MgSO4",".5 mg","5.0 mg","cc","μg"],
+  "preferredReplacements": {"U":"unit","u":"unit","IU":"International Unit","QD":"daily","qd":"daily","QOD":"every other day","qod":"every other day","MS":"spell out medication","MSO4":"morphine sulfate","MgSO4":"magnesium sulfate","cc":"mL","μg":"mcg"},
+  "alwaysConfirmCategories": ["medication","infusion","oncology_drug","dose","route","frequency","blood_product"],
+  "confirmationFields": ["drug","dose","doseUnit","route","frequency","concentration","duration"],
+  "highRiskConfusions": [["morphine sulfate","magnesium sulfate"],["norepinephrine","epinephrine"],["heparin","Hep-Lock"],["insulin","intralipid"]]
+}
